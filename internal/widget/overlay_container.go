@@ -31,18 +31,23 @@ func NewOverlayContainer(c fyne.CanvasObject, canvas fyne.Canvas, onDismiss func
 }
 
 // CreateRenderer returns a new renderer for the overlay container.
+// CreateRenderer returns a new renderer for the overlay container.
 func (o *OverlayContainer) CreateRenderer() fyne.WidgetRenderer {
-	objs := []fyne.CanvasObject{o.Content}
+	var objs []fyne.CanvasObject
 	if o.Background != nil {
-		objs = []fyne.CanvasObject{o.Background, o.Content}
+		objs = append(objs, o.Background)
 	}
-
-	o.manual = !o.Content.Position().IsZero()
+	if o.Content != nil {
+		objs = append(objs, o.Content)
+		o.manual = !o.Content.Position().IsZero()
+	}
 	return &overlayRenderer{BaseRenderer{objs}, o}
 }
 
 func (o *OverlayContainer) Refresh() {
-	o.Content.Refresh()
+	if o.Content != nil {
+		o.Content.Refresh()
+	}
 	o.Base.Refresh()
 }
 
@@ -71,9 +76,13 @@ func (o *OverlayContainer) MouseOut() {
 //
 // Since: 2.8
 func (o *OverlayContainer) SetCanvas(c fyne.Canvas) {
-	o.canvas.Overlays().Remove(o)
+	if o.canvas != nil {
+		o.canvas.Overlays().Remove(o)
+	}
 	o.canvas = c
-	o.canvas.Overlays().Add(o)
+	if o.canvas != nil {
+		o.canvas.Overlays().Add(o)
+	}
 }
 
 // Show makes the overlay container visible.
@@ -109,7 +118,7 @@ type overlayRenderer struct {
 var _ fyne.WidgetRenderer = (*overlayRenderer)(nil)
 
 func (r *overlayRenderer) Layout(s fyne.Size) {
-	if s.IsZero() {
+	if s.IsZero() || r.o.Content == nil {
 		return
 	}
 
@@ -132,6 +141,9 @@ func (r *overlayRenderer) Layout(s fyne.Size) {
 }
 
 func (r *overlayRenderer) MinSize() fyne.Size {
+	if r.o.Content == nil {
+		return fyne.NewSize(0, 0)
+	}
 	return r.o.Content.MinSize()
 }
 

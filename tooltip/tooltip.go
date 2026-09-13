@@ -1,3 +1,5 @@
+// xssyne/tooltip/tooltip.go
+
 package tooltip
 
 import (
@@ -29,6 +31,12 @@ func DefaultStyle() Style {
 	}
 }
 
+// Manager управляет отображением тултипов.
+//
+// Все публичные методы Manager должны вызываться из главной горутины Fyne
+// (обработчики событий, колбэки, fyne.Do). Мьютекс используется только для
+// координации внутреннего состояния (timer/popUp/seq) между Show и Hide,
+// которые могут прийти из разных событий подряд.
 type Manager struct {
 	mu      sync.Mutex
 	seq     uint64
@@ -47,11 +55,13 @@ func NewManager(canvas fyne.Canvas) *Manager {
 }
 
 // SetStyle устанавливает новый стиль для всех последующих тултипов.
+// Должен вызываться из главной горутины.
 func (m *Manager) SetStyle(s Style) {
 	m.style = s
 }
 
 // Show отображает тултип с текущим стилем.
+// Должен вызываться из главной горутины.
 func (m *Manager) Show(w fyne.Widget, text string, pos fyne.Position) {
 	m.mu.Lock()
 	if m.current == w && m.popUp != nil && m.popUp.Visible() {
@@ -61,14 +71,15 @@ func (m *Manager) Show(w fyne.Widget, text string, pos fyne.Position) {
 	}
 	m.seq++
 	seq := m.seq
-	m.mu.Unlock()
-
-	m.Hide()
-
-	m.mu.Lock()
+	if m.timer != nil {
+		m.timer.Stop()
+		m.timer = nil
+	}
+	if m.popUp != nil {
+		m.popUp.Hide()
+		m.popUp = nil
+	}
 	m.current = w
-	m.mu.Unlock()
-
 	m.timer = time.AfterFunc(300*time.Millisecond, func() {
 		fyne.Do(func() {
 			m.mu.Lock()
@@ -80,12 +91,15 @@ func (m *Manager) Show(w fyne.Widget, text string, pos fyne.Position) {
 			m.showPopUp(text, pos)
 		})
 	})
+	m.mu.Unlock()
 }
 
+// showPopUp выполняется на главной горутине (вызывается из fyne.Do),
+// поэтому m.style и m.canvas можно читать без блокировки.
 func (m *Manager) showPopUp(text string, pos fyne.Position) {
 	const maxWidth = 333
-	const padding = float32(1)      // 8
-	const outerPadding = float32(1) // 6
+	const padding = float32(1)
+	const outerPadding = float32(1)
 
 	// Создаём Label с переносом
 	label := widget.NewLabel(text)
@@ -149,6 +163,7 @@ func (m *Manager) showPopUp(text string, pos fyne.Position) {
 	m.popUp = popUp
 }
 
+// Hide скрывает тултип и инвалидирует отложенный колбэк.
 func (m *Manager) Hide() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -508,9 +508,9 @@ func (c *CheckBoxSegment) Inline() bool {
 // Textual returns the content of this segment rendered to plain text.
 func (c *CheckBoxSegment) Textual() string {
 	if c.Checked {
-		return "[x] "
+		return "[x] " + c.Text
 	}
-	return "[ ] "
+	return "[ ] " + c.Text
 }
 
 // Visual returns a new instance of a check widget for this segment.

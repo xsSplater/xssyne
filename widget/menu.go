@@ -1,3 +1,5 @@
+// xssyne/widget/menu.go
+
 package widget
 
 import (
@@ -60,6 +62,9 @@ func (m *Menu) ActivateNext() {
 	found := m.activeItem == nil
 	for _, item := range m.Items {
 		if mItem, ok := item.(*menuItem); ok {
+			if mItem.Item.Header {
+				continue // пропускаем заголовки
+			}
 			if found {
 				m.activateItem(mItem)
 				return
@@ -85,6 +90,9 @@ func (m *Menu) ActivatePrevious() {
 	for i := len(m.Items) - 1; i >= 0; i-- {
 		item := m.Items[i]
 		if mItem, ok := item.(*menuItem); ok {
+			if mItem.Item.Header {
+				continue // пропускаем заголовки
+			}
 			if found {
 				m.activateItem(mItem)
 				return
@@ -107,6 +115,8 @@ func (m *Menu) CreateRenderer() fyne.WidgetRenderer {
 	scroll.SetMinSize(box.MinSize())
 	background := canvas.NewRectangle(th.Color(theme.ColorNameMenuBackground, v))
 	background.CornerRadius = th.Size(theme.SizeNameMenuRadius)
+	background.StrokeWidth = th.Size(theme.SizeNameMenuBorderWidth)
+	background.StrokeColor = th.Color(theme.ColorNameMenuBorder, v)
 	widget.ApplyShadowForLevel(&background.Shadow, widget.MenuLevel, th.Color(theme.ColorNameShadow, v))
 	objects := []fyne.CanvasObject{background, scroll}
 	for _, i := range m.Items {
@@ -162,8 +172,10 @@ func (m *Menu) Refresh() {
 
 func (m *Menu) getContainsCheck() bool {
 	for _, item := range m.Items {
-		if mi, ok := item.(*menuItem); ok && mi.Item.Checked {
-			return true
+		if mi, ok := item.(*menuItem); ok {
+			if mi.Item.Checked || mi.Item.CheckedIcon != nil || mi.Item.UncheckedIcon != nil {
+				return true
+			}
 		}
 	}
 	return false
@@ -272,6 +284,8 @@ func (r *menuRenderer) Refresh() {
 	r.b.FillColor = th.Color(theme.ColorNameMenuBackground, v)
 	r.b.Shadow.Color = th.Color(theme.ColorNameShadow, v)
 	r.b.CornerRadius = th.Size(theme.SizeNameMenuRadius)
+	r.b.StrokeWidth = th.Size(theme.SizeNameMenuBorderWidth)
+	r.b.StrokeColor = th.Color(theme.ColorNameMenuBorder, v)
 
 	for _, i := range r.m.Items {
 		if txt, ok := i.(*menuItem); ok {

@@ -432,9 +432,9 @@ func (r *scrollContainerRenderer) Refresh() {
 	r.rightShadow.Refresh()
 	r.bottomShadow.Refresh()
 
-	if len(r.Objects()) == 0 || r.Objects()[0] != r.scroll.Content {
+	if objs := r.Objects(); len(objs) > 0 && objs[0] != r.scroll.Content {
 		// push updated content object to baseRenderer
-		r.Objects()[0] = r.scroll.Content
+		objs[0] = r.scroll.Content
 	}
 	size := r.scroll.Size()
 	newMin := r.scroll.Content.MinSize()

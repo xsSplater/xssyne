@@ -65,6 +65,7 @@ func (c *Calendar) CreateRenderer() fyne.WidgetRenderer {
 
 	c.monthNext = NewButtonWithIcon("", theme.NavigateNextIcon(), func() {
 		c.currentTime = c.currentTime.AddDate(0, 1, 0)
+		c.currentTime = time.Date(c.currentTime.Year(), c.currentTime.Month(), 1, 0, 0, 0, 0, c.currentTime.Location())
 		c.monthLabel.SetText(c.monthYear())
 		c.dates.Objects = c.calendarObjects()
 	})

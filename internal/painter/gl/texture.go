@@ -80,6 +80,9 @@ func (p *painter) getTexture(object fyne.CanvasObject, creator func(canvasObject
 
 		if !ok {
 			tex := creator(object)
+			if !cache.IsValid(cache.TextureType(tex)) {
+				return noTexture, errors.New("no texture available")
+			}
 			texture = cache.TextureType(tex)
 			cache.SetTextTexture(ent, texture, p.canvas, func() {
 				p.ctx.DeleteTexture(tex)
@@ -103,6 +106,14 @@ func (p *painter) getTexture(object fyne.CanvasObject, creator func(canvasObject
 }
 
 func (p *painter) imgToTexture(img image.Image, textureFilter canvas.ImageScale) Texture {
+	if img == nil {
+		return noTexture
+	}
+	bounds := img.Bounds()
+	if bounds.Dx() <= 0 || bounds.Dy() <= 0 {
+		return noTexture
+	}
+
 	switch i := img.(type) {
 	case *image.Uniform:
 		texture := p.newTexture(textureFilter)
@@ -138,8 +149,8 @@ func (p *painter) imgToTexture(img image.Image, textureFilter canvas.ImageScale)
 		p.logError()
 		return texture
 	default:
-		rgba := image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx(), img.Bounds().Dy()))
-		draw.Draw(rgba, rgba.Rect, img, img.Bounds().Min, draw.Over)
+		rgba := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
+		draw.Draw(rgba, rgba.Rect, img, bounds.Min, draw.Over)
 		return p.imgToTexture(rgba, textureFilter)
 	}
 }
@@ -149,6 +160,9 @@ func (p *painter) newGlImageTexture(obj fyne.CanvasObject) Texture {
 
 	width := p.textureScale(img.Size().Width)
 	height := p.textureScale(img.Size().Height)
+	if int(width) <= 0 || int(height) <= 0 {
+		return noTexture
+	}
 
 	tex := paint.PaintImage(img, p.canvas, int(width), int(height))
 	if tex == nil {

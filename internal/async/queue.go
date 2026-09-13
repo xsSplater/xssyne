@@ -74,7 +74,7 @@ func (q *CanvasObjectQueue) Out() fyne.CanvasObject {
 				}
 
 				q.tail.CompareAndSwap(last, firstnext)
-			} else {
+			} else if firstnext != nil {
 				v := firstnext.v
 				if q.head.CompareAndSwap(first, firstnext) {
 					q.len.Add(^uint64(0))

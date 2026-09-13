@@ -58,7 +58,7 @@ func (u *uri) MimeType() string {
 		}
 
 		readCloser, err := repo.Reader(u)
-		if err == nil {
+		if err == nil && readCloser != nil {
 			defer readCloser.Close()
 			scanner := bufio.NewScanner(readCloser)
 			if scanner.Scan() && !utf8.Valid(scanner.Bytes()) {

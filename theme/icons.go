@@ -1,3 +1,5 @@
+// xssyne/theme/icons.go
+
 package theme
 
 import (
@@ -1010,12 +1012,12 @@ func DocumentSaveIcon() fyne.Resource {
 
 // MoreHorizontalIcon returns a resource containing the standard horizontal more icon for the current theme
 func MoreHorizontalIcon() fyne.Resource {
-	return Current().Icon(IconNameMoreHorizontal)
+	return safeIconLookup(IconNameMoreHorizontal)
 }
 
 // MoreVerticalIcon returns a resource containing the standard vertical more icon for the current theme
 func MoreVerticalIcon() fyne.Resource {
-	return Current().Icon(IconNameMoreVertical)
+	return safeIconLookup(IconNameMoreVertical)
 }
 
 // InfoIcon returns a resource containing the standard dialog info icon for the current theme

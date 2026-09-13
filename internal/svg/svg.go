@@ -60,10 +60,15 @@ func NewDecoder(stream io.Reader) (*Decoder, error) {
 }
 
 func (d *Decoder) Config() Config {
+	w, h := d.icon.ViewBox.W, d.icon.ViewBox.H
+	aspect := float32(1)
+	if h != 0 {
+		aspect = float32(w / h)
+	}
 	return Config{
-		int(d.icon.ViewBox.W),
-		int(d.icon.ViewBox.H),
-		float32(d.icon.ViewBox.W / d.icon.ViewBox.H),
+		int(w),
+		int(h),
+		aspect,
 	}
 }
 
@@ -325,14 +330,12 @@ func colorToHexAndOpacity(color color.Color) (hexStr, aStr string) {
 	return hexStr, aStr
 }
 
-func drawSVGSafely(icon *oksvg.SvgIcon, raster *rasterx.Dasher) error {
-	var err error
+func drawSVGSafely(icon *oksvg.SvgIcon, raster *rasterx.Dasher) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New("crash when rendering svg")
 		}
 	}()
 	icon.Draw(raster, 1)
-
-	return err
+	return nil
 }

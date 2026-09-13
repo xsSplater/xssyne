@@ -1,6 +1,7 @@
 package painter
 
 import (
+	"errors"
 	"image"
 	_ "image/jpeg" // avoid users having to import when using image widget
 	_ "image/png"  // avoid the same for PNG images
@@ -27,9 +28,11 @@ func PaintImage(img *canvas.Image, c fyne.Canvas, width, height int) image.Image
 	return dst
 }
 
+var errInvalidDimensions = errors.New("invalid image dimensions")
+
 func paintImage(img *canvas.Image, width, height int) (dst image.Image, err error) {
 	if width <= 0 || height <= 0 {
-		return dst, err
+		return nil, errInvalidDimensions
 	}
 
 	dst = img.Image
@@ -55,8 +58,12 @@ func scaleImage(pixels image.Image, scaledW, scaledH int, scale canvas.ImageScal
 	}
 
 	bounds := pixels.Bounds()
-	pixW := int(fyne.Min(float32(scaledW), float32(bounds.Dx()))) // don't push more pixels than we have to
-	pixH := int(fyne.Min(float32(scaledH), float32(bounds.Dy()))) // the GL calls will scale this up on GPU.
+	pixW := int(fyne.Min(float32(scaledW), float32(bounds.Dx())))
+	pixH := int(fyne.Min(float32(scaledH), float32(bounds.Dy())))
+	if pixW <= 0 || pixH <= 0 {
+		// avoid 0-sized NRGBA, empty bounds, and downstream draws into a zero rect
+		return pixels
+	}
 	scaledBounds := image.Rect(0, 0, pixW, pixH)
 	tex := image.NewNRGBA(scaledBounds)
 	switch scale {

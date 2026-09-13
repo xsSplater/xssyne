@@ -231,14 +231,12 @@ func (r *FileRepository) CanList(u fyne.URI) (bool, error) {
 	}
 
 	if err != nil && err != io.EOF {
+		if os.IsPermission(err) {
+			return false, nil
+		}
 		return false, err
 	}
 
-	if os.IsPermission(err) {
-		return false, nil
-	}
-
-	// it is a directory, and checking the permissions did not error out
 	return true, nil
 }
 
@@ -277,10 +275,13 @@ func copyFile(dst, src string) error {
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
 
-	_, err = io.Copy(dstFile, srcFile)
-	return err
+	_, copyErr := io.Copy(dstFile, srcFile)
+	closeErr := dstFile.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	return closeErr
 }
 
 func fastCopy(dst, src string) error {
@@ -327,12 +328,15 @@ func openFile(uri fyne.URI, write bool, truncate bool) (*file, error) {
 	var err error
 	if write {
 		if truncate {
-			f, err = os.Create(path) // If it exists this will truncate which is what we wanted
+			f, err = os.Create(path)
 		} else {
 			f, err = os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
 		}
 	} else {
 		f, err = os.Open(path)
 	}
-	return &file{File: f, uri: uri}, err
+	if err != nil {
+		return nil, err
+	}
+	return &file{File: f, uri: uri}, nil
 }

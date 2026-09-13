@@ -531,6 +531,9 @@ func (p *painter) bindShaderTextures(state *shaderState, shader *canvas.Shader) 
 }
 
 func (p *painter) drawRaster(img *canvas.Raster, pos fyne.Position, frame fyne.Size) {
+	if img.Generator == nil {
+		return
+	}
 	p.drawTextureWithDetails(img, p.newGlRasterTexture, pos, img.Size(), frame, canvas.ImageFillStretch, float32(img.Alpha()), 0)
 }
 

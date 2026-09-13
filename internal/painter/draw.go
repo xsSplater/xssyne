@@ -100,11 +100,13 @@ func DrawCircle(circle *canvas.Circle, vectorPad float32, scale func(float32) fl
 		filler.Draw()
 	}
 
-	dasher := rasterx.NewDasher(width, height, scanner)
-	dasher.SetColor(circle.StrokeColor)
-	dasher.SetStroke(fixed.Int26_6(float64(stroke)*64), 0, nil, nil, nil, 0, nil, 0)
-	rasterx.AddCircle(float64(width/2), float64(height/2), float64(scale(radius)), dasher)
-	dasher.Draw()
+	if circle.StrokeColor != nil && stroke > 0 {
+		dasher := rasterx.NewDasher(width, height, scanner)
+		dasher.SetColor(circle.StrokeColor)
+		dasher.SetStroke(fixed.Int26_6(float64(stroke)*64), 0, nil, nil, nil, 0, nil, 0)
+		rasterx.AddCircle(float64(width/2), float64(height/2), float64(scale(radius)), dasher)
+		dasher.Draw()
+	}
 
 	return raw
 }
@@ -423,11 +425,13 @@ func DrawEllipse(ellipse *canvas.Ellipse, vectorPad float32, scale func(float32)
 		filler.Draw()
 	}
 
-	dasher := rasterx.NewDasher(width, height, scanner)
-	dasher.SetColor(ellipse.StrokeColor)
-	dasher.SetStroke(fixed.Int26_6(float64(stroke)*64), 0, nil, nil, nil, 0, nil, 0)
-	rasterx.AddEllipse(float64(width/2), float64(height/2), float64(scale(radiusX)), float64(scale(radiusY)), 0, dasher)
-	dasher.Draw()
+	if ellipse.StrokeColor != nil && stroke > 0 {
+		dasher := rasterx.NewDasher(width, height, scanner)
+		dasher.SetColor(ellipse.StrokeColor)
+		dasher.SetStroke(fixed.Int26_6(float64(stroke)*64), 0, nil, nil, nil, 0, nil, 0)
+		rasterx.AddEllipse(float64(width/2), float64(height/2), float64(scale(radiusX)), float64(scale(radiusY)), 0, dasher)
+		dasher.Draw()
+	}
 
 	return raw
 }

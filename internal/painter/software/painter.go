@@ -22,6 +22,9 @@ func NewPainter() *Painter {
 // image containing the result of rendering.
 func (*Painter) Paint(c fyne.Canvas) image.Image {
 	bounds := image.Rect(0, 0, scale.ToScreenCoordinate(c, c.Size().Width), scale.ToScreenCoordinate(c, c.Size().Height))
+	if bounds.Dx() <= 0 || bounds.Dy() <= 0 {
+		return image.NewNRGBA(image.Rect(0, 0, 1, 1))
+	}
 	base := image.NewNRGBA(bounds)
 
 	paint := func(obj fyne.CanvasObject, pos, clipPos fyne.Position, clipSize fyne.Size) bool {

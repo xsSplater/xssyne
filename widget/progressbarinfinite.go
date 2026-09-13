@@ -64,14 +64,10 @@ func (p *infProgressRenderer) Layout(size fyne.Size) {
 // Refresh updates the size and position of the horizontal scrolling infinite progress bar
 func (p *infProgressRenderer) Refresh() {
 	running := p.progress.Running()
-	if running {
-		if !p.wasRunning {
-			p.start()
-		}
-		return // we refresh from the goroutine
-	} else if p.wasRunning {
+	if running && !p.wasRunning {
+		p.start()
+	} else if !running && p.wasRunning {
 		p.stop()
-		return
 	}
 
 	th := p.progress.Theme()

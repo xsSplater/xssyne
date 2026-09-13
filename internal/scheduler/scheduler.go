@@ -194,8 +194,13 @@ func (s *Scheduler) saveLocked() error {
 	if err != nil {
 		return err
 	}
-	defer w.Close()
-	return json.NewEncoder(w).Encode(list)
+
+	encErr := json.NewEncoder(w).Encode(list)
+	closeErr := w.Close()
+	if encErr != nil {
+		return encErr
+	}
+	return closeErr
 }
 
 // loadLocked reads persisted entries from the cache. Must be called with s.mu held.

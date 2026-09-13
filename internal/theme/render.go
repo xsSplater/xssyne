@@ -1,3 +1,5 @@
+// xssyne/internal/theme/render.go
+
 package theme
 
 import (
@@ -24,7 +26,16 @@ func PushRenderingTheme(th fyne.Theme) {
 
 // PopRenderingTheme is used by the ThemeOverride container to remove an overridden theme during rendering
 // and calculations.
+//
+// The stack guard protects against unbalanced Push/Pop pairs (e.g. a Layout
+// that returns before its deferred Pop, or an early panic inside a layout).
+// Since all rendering runs on the main goroutine in Fyne v2.6+, no lock is
+// needed here.
 func PopRenderingTheme() {
+	if len(themeStack) == 0 {
+		return
+	}
+
 	themeStack[len(themeStack)-1] = nil
 	themeStack = themeStack[:len(themeStack)-1]
 }

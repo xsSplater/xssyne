@@ -259,7 +259,8 @@ func NewInMemoryPreferences() *InMemoryPreferences {
 
 func (p *InMemoryPreferences) fireChange() {
 	p.lock.RLock()
-	listeners := p.changeListeners
+	listeners := make([]func(), len(p.changeListeners))
+	copy(listeners, p.changeListeners)
 	p.lock.RUnlock()
 
 	for _, l := range listeners {

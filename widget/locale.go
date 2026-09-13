@@ -108,8 +108,8 @@ func getLocaleWeekStart() string {
 func lookupLocaleSetting(l fyne.Locale) localeSetting {
 	region := ""
 	lang := l.LanguageString()
-	if pos := strings.Index(lang, "-"); pos != -1 {
-		region = strings.Split(lang, "-")[1]
+	if pos := strings.LastIndex(lang, "-"); pos != -1 {
+		region = lang[pos+1:]
 	}
 
 	if setting, ok := localeSettings[region]; ok {

@@ -1,3 +1,5 @@
+// xssyne/widget/menu.go
+
 package widget
 
 import (
@@ -53,10 +55,30 @@ func (i *menuItem) CreateRenderer() fyne.WidgetRenderer {
 
 	background := canvas.NewRectangle(th.Color(theme.ColorNameHover, v))
 	background.CornerRadius = th.Size(theme.SizeNameMenuRadius)
+	background.StrokeWidth = th.Size(theme.SizeNameMenuBorderWidth)
+	background.StrokeColor = th.Color(theme.ColorNameMenuItemActiveBorder, v)
 	background.Hide()
 	text := canvas.NewText(i.Item.Label, th.Color(theme.ColorNameForeground, v))
 	text.Alignment = i.alignment
-	objects := []fyne.CanvasObject{background, text}
+	// Тень — тот же текст, что и основной, но смещённый на 1 px вниз и вправо
+	// и с пониженной альфой. Рисуется ПОД основным текстом (порядок
+	// в objects: background, shadow, text).
+	shadow := canvas.NewText(i.Item.Label, color.NRGBA{R: 0, G: 0, B: 0, A: 200})
+	shadow.Alignment = i.alignment
+	shadow.TextStyle = text.TextStyle
+	if fyne.CurrentApp().Settings().ThemeVariant() == theme.VariantLight {
+		shadow.Hide()
+	}
+	objects := []fyne.CanvasObject{background, shadow, text}
+
+	var subtext *canvas.Text
+	if i.Item.Subtitle != "" {
+		subtext = canvas.NewText(i.Item.Subtitle, th.Color(theme.ColorNamePlaceHolder, v))
+		subtext.TextSize = th.Size(theme.SizeNameCaptionText)
+		subtext.Alignment = i.alignment
+		objects = append(objects, subtext)
+	}
+
 	var expandIcon *canvas.Image
 	if i.Item.ChildMenu != nil {
 		expandIcon = canvas.NewImageFromResource(th.Icon(theme.IconNameMenuExpand))
@@ -88,6 +110,8 @@ func (i *menuItem) CreateRenderer() fyne.WidgetRenderer {
 		icon:          icon,
 		shortcutTexts: shortcutTexts,
 		text:          text,
+		subtext:       subtext,
+		shadow:        shadow,
 		background:    background,
 	}
 	r.updateVisuals()
@@ -96,7 +120,10 @@ func (i *menuItem) CreateRenderer() fyne.WidgetRenderer {
 
 // MouseIn activates the item which shows the submenu if the item has one.
 // The submenu of any sibling of the item will be hidden.
-func (i *menuItem) MouseIn(*desktop.MouseEvent) {
+func (i *menuItem) MouseIn(e *desktop.MouseEvent) {
+	if i.Item.Header {
+		return
+	}
 	i.activate()
 }
 
@@ -112,9 +139,9 @@ func (i *menuItem) MouseOut() {
 }
 
 // Tapped performs the action of the item and dismisses the menu.
-// It does nothing if the item doesn’t have an action.
+// It does nothing if the item doesn't have an action.
 func (i *menuItem) Tapped(*fyne.PointEvent) {
-	if i.Item.Disabled {
+	if i.Item.Disabled || i.Item.Header {
 		return
 	}
 	if i.Item.Action == nil {
@@ -135,7 +162,7 @@ func (i *menuItem) Tapped(*fyne.PointEvent) {
 }
 
 func (i *menuItem) activate() {
-	if i.Item.Disabled {
+	if i.Item.Disabled || i.Item.Header {
 		return
 	}
 	if i.Child() != nil {
@@ -208,6 +235,8 @@ type menuItemRenderer struct {
 	minSize          fyne.Size
 	shortcutTexts    []*canvas.Text
 	text             *canvas.Text
+	subtext          *canvas.Text
+	shadow           *canvas.Text
 }
 
 func (r *menuItemRenderer) Layout(size fyne.Size) {
@@ -228,13 +257,11 @@ func (r *menuItemRenderer) Layout(size fyne.Size) {
 	}
 
 	rightOffset -= innerPad
-	textHeight := r.text.MinSize().Height
 	for i := len(r.shortcutTexts) - 1; i >= 0; i-- {
 		text := r.shortcutTexts[i]
 		text.Resize(text.MinSize())
 		rightOffset -= text.MinSize().Width
-		text.Move(fyne.NewPos(rightOffset, innerPad+(textHeight-text.Size().Height)))
-
+		text.Move(fyne.NewPos(rightOffset, innerPad))
 		if i == 0 {
 			rightOffset -= innerPad
 		}
@@ -246,15 +273,50 @@ func (r *menuItemRenderer) Layout(size fyne.Size) {
 	if r.icon != nil {
 		r.icon.Resize(iconSize)
 		r.icon.Move(fyne.NewPos(leftOffset, iconTopOffset))
-		leftOffset += inlineIcon
-		leftOffset += innerPad
+		leftOffset += inlineIcon + innerPad
 	}
 
-	r.text.Resize(fyne.NewSize(rightOffset-leftOffset, textHeight))
-	r.text.Move(fyne.NewPos(leftOffset, innerPad))
+	textWidth := rightOffset - leftOffset
+
+	if r.subtext != nil {
+		// Две строки: основная сверху, подзаголовок снизу.
+		mainHeight := r.text.MinSize().Height
+		subHeight := r.subtext.MinSize().Height
+		totalHeight := mainHeight + subHeight
+		top := (size.Height - totalHeight) / 2
+
+		r.text.Resize(fyne.NewSize(textWidth, mainHeight))
+		r.text.Move(fyne.NewPos(leftOffset, top))
+
+		r.subtext.Resize(fyne.NewSize(textWidth, subHeight))
+		r.subtext.Move(fyne.NewPos(leftOffset, top+mainHeight))
+	} else {
+		textHeight := r.text.MinSize().Height
+		textY := (size.Height - textHeight) / 2
+		r.text.Resize(fyne.NewSize(textWidth, textHeight))
+		r.text.Move(fyne.NewPos(leftOffset, textY))
+	}
 
 	r.background.Resize(size.Subtract(fyne.NewSquareSize(pad)))
 	r.background.Move(fyne.NewPos(pad/2, pad/2))
+
+	if r.shadow != nil {
+		if fyne.CurrentApp().Settings().ThemeVariant() == theme.VariantLight {
+			r.shadow.Hide()
+		} else {
+			// Синхронизируем метрику тени с основным текстом — иначе
+			// Bold-тень не совпадёт с regular-текстом и «двоит» буквы.
+			r.shadow.TextSize = r.text.TextSize
+			r.shadow.TextStyle = r.text.TextStyle
+			r.shadow.Resize(r.text.Size())
+			pos := r.text.Position()
+			r.shadow.Move(fyne.NewPos(pos.X+1, pos.Y+1))
+
+			r.shadow.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 0x90}
+			r.shadow.Show()
+		}
+		r.shadow.Refresh()
+	}
 }
 
 func (r *menuItemRenderer) MinSize() fyne.Size {
@@ -268,6 +330,9 @@ func (r *menuItemRenderer) MinSize() fyne.Size {
 	innerPad2 := innerPad * 2
 
 	minSize := r.text.MinSize().AddWidthHeight(innerPad2+r.checkSpace(), innerPad2)
+	if r.subtext != nil {
+		minSize = minSize.AddWidthHeight(0, r.subtext.MinSize().Height)
+	}
 	if r.expandIcon != nil {
 		minSize = minSize.AddWidthHeight(inlineIcon, 0)
 	}
@@ -282,34 +347,71 @@ func (r *menuItemRenderer) MinSize() fyne.Size {
 		minSize = minSize.AddWidthHeight(textWidth+innerPad, 0)
 	}
 	r.minSize = minSize
+	r.lastThemePadding = innerPad
 	return r.minSize
 }
 
 func (r *menuItemRenderer) updateVisuals() {
 	th := r.i.parent.Theme()
 	v := fyne.CurrentApp().Settings().ThemeVariant()
+
 	r.background.CornerRadius = th.Size(theme.SizeNameMenuRadius)
-	if fyne.CurrentDevice().IsMobile() {
+	r.background.StrokeWidth = th.Size(theme.SizeNameMenuBorderWidth)
+	r.background.StrokeColor = th.Color(theme.ColorNameMenuItemActiveBorder, v)
+
+	switch {
+	case r.i.Item.Header:
+		// Header — постоянный фон, без hover/active.
+		r.background.FillColor = th.Color(theme.ColorNameMenuItemHeaderBg, v)
+		r.background.Show()
+	case fyne.CurrentDevice().IsMobile():
 		r.background.Hide()
-	} else if r.i.isActive() {
+	case r.i.isActive():
 		r.background.FillColor = th.Color(theme.ColorNameFocus, v)
 		r.background.Show()
-	} else {
+	default:
 		r.background.Hide()
 	}
+
 	r.background.Refresh()
 	r.text.Alignment = r.i.alignment
 	r.refreshText(r.text, false)
+	if r.shadow != nil {
+		if fyne.CurrentApp().Settings().ThemeVariant() == theme.VariantLight {
+			r.shadow.Hide()
+		} else {
+			r.shadow.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 0x90}
+			r.shadow.TextStyle = r.text.TextStyle
+			r.shadow.Show()
+		}
+		r.shadow.Refresh()
+	}
 	for _, text := range r.shortcutTexts {
 		r.refreshText(text, true)
 	}
+	if r.subtext != nil {
+		r.subtext.TextSize = th.Size(theme.SizeNameCaptionText)
+		r.subtext.Color = th.Color(theme.ColorNamePlaceHolder, v)
+		r.subtext.Refresh()
+	}
 
-	if r.i.Item.Checked {
+	// Кастомная иконка выбора: приоритет у CheckedIcon/UncheckedIcon
+	// из Item, если они заданы. Иначе — стандартная галочка Fyne.
+	// updateIcon сюда НЕ вызываем: он бы перезаписал кастомный ресурс
+	// значением из темы.
+	switch {
+	case r.i.Item.Checked && r.i.Item.CheckedIcon != nil:
+		r.checkIcon.Resource = r.i.Item.CheckedIcon
 		r.checkIcon.Show()
-	} else {
+	case !r.i.Item.Checked && r.i.Item.UncheckedIcon != nil:
+		r.checkIcon.Resource = r.i.Item.UncheckedIcon
+		r.checkIcon.Show()
+	case r.i.Item.Checked:
+		r.checkIcon.Resource = th.Icon(theme.IconNameConfirm)
+		r.checkIcon.Show()
+	default:
 		r.checkIcon.Hide()
 	}
-	r.updateIcon(r.checkIcon, th.Icon(theme.IconNameConfirm))
 	r.updateIcon(r.expandIcon, th.Icon(theme.IconNameMenuExpand))
 	r.updateIcon(r.icon, r.i.Item.Icon)
 }
@@ -332,6 +434,7 @@ func (r *menuItemRenderer) minSizeUnchanged() bool {
 	return !r.minSize.IsZero() &&
 		r.text.TextSize == th.Size(theme.SizeNameText) &&
 		(r.expandIcon == nil || r.expandIcon.Size().Width == th.Size(theme.SizeNameInlineIcon)) &&
+		(r.subtext == nil || r.subtext.TextSize == th.Size(theme.SizeNameCaptionText)) &&
 		r.lastThemePadding == th.Size(theme.SizeNameInnerPadding)
 }
 
@@ -351,14 +454,22 @@ func (r *menuItemRenderer) refreshText(text *canvas.Text, shortcut bool) {
 	v := fyne.CurrentApp().Settings().ThemeVariant()
 
 	text.TextSize = th.Size(theme.SizeNameText)
-	if r.i.Item.Disabled {
+	switch {
+	case r.i.Item.Disabled:
 		text.Color = th.Color(theme.ColorNameDisabled, v)
-	} else {
-		if shortcut {
-			text.Color = shortcutColor(th)
-		} else {
-			text.Color = th.Color(theme.ColorNameForeground, v)
-		}
+		text.TextStyle = fyne.TextStyle{}
+	case r.i.Item.Danger:
+		text.Color = th.Color(theme.ColorNameMenuItemDanger, v)
+		text.TextStyle = fyne.TextStyle{Bold: true}
+	case r.i.Item.Header:
+		text.Color = th.Color(theme.ColorNameMenuItemHeader, v)
+		text.TextStyle = fyne.TextStyle{Bold: true}
+	case shortcut:
+		text.Color = shortcutColor(th)
+		text.TextStyle = fyne.TextStyle{}
+	default:
+		text.Color = th.Color(theme.ColorNameForeground, v)
+		text.TextStyle = fyne.TextStyle{}
 	}
 	text.Refresh()
 }

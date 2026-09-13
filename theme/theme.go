@@ -1,3 +1,5 @@
+// xssyne/theme/theme.go
+
 // Package theme defines how a Fyne app should look when rendered.
 package theme // import "fyne.io/fyne/v2/theme"
 
@@ -22,6 +24,11 @@ const (
 	//
 	// Since: 2.0
 	VariantLight = internaltheme.VariantLight
+
+	// Верхнее меню
+	ColorNameMenuBarAccent   = "menuBarAccent"   // полоска под активным + цвет текста активного
+	ColorNameMenuBarActiveBg = "menuBarActiveBg" // фон активного пункта
+	ColorNameMenuBarHoverBg  = "menuBarHoverBg"  // фон при наведении
 )
 
 var defaultTheme, systemTheme fyne.Theme
@@ -148,14 +155,22 @@ func (t *builtinTheme) Font(style fyne.TextStyle) fyne.Resource {
 // It looks up based on user preferences and application configuration.
 //
 // Since: 2.5
+var cachedDarkTheme fyne.Theme
+
 func Current() fyne.Theme {
 	app := fyne.CurrentApp()
 	if app == nil {
-		return DarkTheme()
+		if cachedDarkTheme == nil {
+			cachedDarkTheme = DarkTheme()
+		}
+		return cachedDarkTheme
 	}
 	currentTheme := app.Settings().Theme()
 	if currentTheme == nil {
-		return DarkTheme()
+		if cachedDarkTheme == nil {
+			cachedDarkTheme = DarkTheme()
+		}
+		return cachedDarkTheme
 	}
 
 	return internaltheme.CurrentlyRenderingWithFallback(currentTheme)
@@ -235,6 +250,22 @@ func darkPaletteColorNamed(name fyne.ThemeColorName) color.Color {
 		return colorDarkSuccess
 	case ColorNameWarning:
 		return colorDarkWarning
+	case ColorNameMenuBarAccent:
+		return colorDarkForeground
+	case ColorNameMenuBarActiveBg:
+		return colorDarkHover
+	case ColorNameMenuBarHoverBg:
+		return colorDarkHover
+	case ColorNameMenuBorder:
+		return colorDarkSeparator
+	case ColorNameMenuItemActiveBorder:
+		return colorDarkForeground
+	case ColorNameMenuItemDanger:
+		return colorDarkError
+	case ColorNameMenuItemHeader:
+		return colorDarkForeground
+	case ColorNameMenuItemHeaderBg:
+		return colorDarkHover
 	}
 
 	return color.Transparent
@@ -315,6 +346,22 @@ func lightPaletteColorNamed(name fyne.ThemeColorName) color.Color {
 		return colorLightSuccess
 	case ColorNameWarning:
 		return colorLightWarning
+	case ColorNameMenuBarAccent:
+		return colorLightFocusBlue
+	case ColorNameMenuBarActiveBg:
+		return colorLightHover
+	case ColorNameMenuBarHoverBg:
+		return colorLightHover
+	case ColorNameMenuBorder:
+		return colorLightSeparator
+	case ColorNameMenuItemActiveBorder:
+		return colorLightForeground
+	case ColorNameMenuItemDanger:
+		return colorLightError
+	case ColorNameMenuItemHeader:
+		return colorLightForeground
+	case ColorNameMenuItemHeaderBg:
+		return colorLightHover
 	}
 
 	return color.Transparent

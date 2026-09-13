@@ -112,6 +112,7 @@ func (a *Accordion) Remove(item *AccordionItem) {
 	for i, ai := range a.Items {
 		if ai == item {
 			a.Items = append(a.Items[:i], a.Items[i+1:]...)
+			a.Refresh()
 			return
 		}
 	}

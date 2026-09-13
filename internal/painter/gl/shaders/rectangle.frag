@@ -18,6 +18,9 @@ uniform float shadowType;
 vec4 blend_shadow(vec4 color, vec4 shadow)
 {
     float alpha = color.a + shadow.a * (1.0 - color.a);
+    if (alpha <= 0.0) {
+        return vec4(0.0);
+    }
     return vec4(
         (color.rgb * color.a + shadow.rgb * shadow.a * (1.0 - color.a)) / alpha,
         alpha

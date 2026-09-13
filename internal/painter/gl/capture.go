@@ -36,6 +36,10 @@ func (c *captureImage) Bounds() image.Rectangle {
 }
 
 func (c *captureImage) At(x, y int) color.Color {
+	b := c.Bounds()
+	if !(image.Point{X: x, Y: y}.In(b)) {
+		return color.RGBA{}
+	}
 	start := ((c.height-y-1)*c.width + x) * 4
 	return color.RGBA{R: c.pix[start], G: c.pix[start+1], B: c.pix[start+2], A: c.pix[start+3]}
 }

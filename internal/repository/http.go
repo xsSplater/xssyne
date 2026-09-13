@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"io"
 	"net/http"
 
 	"fyne.io/fyne/v2"
@@ -23,8 +24,8 @@ func (f *remoteFile) Close() error {
 }
 
 func (f *remoteFile) Read(p []byte) (int, error) {
-	if f.Response == nil {
-		return 0, nil
+	if f.Response == nil || f.Response.Body == nil {
+		return 0, io.EOF
 	}
 	return f.Body.Read(p)
 }
@@ -58,6 +59,8 @@ func (r *HTTPRepository) Exists(u fyne.URI) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	}
@@ -71,7 +74,13 @@ func (r *HTTPRepository) Exists(u fyne.URI) (bool, error) {
 // Since: 2.1
 func (r *HTTPRepository) Reader(u fyne.URI) (fyne.URIReadCloser, error) {
 	resp, err := http.Get(u.String())
-	return &remoteFile{Response: resp, uri: u}, err
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, errors.New("empty response")
+	}
+	return &remoteFile{Response: resp, uri: u}, nil
 }
 
 // CanRead makes a HEAD HTTP request to analyse the headers received
@@ -84,6 +93,8 @@ func (r *HTTPRepository) CanRead(u fyne.URI) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode < http.StatusOK || resp.StatusCode > http.StatusIMUsed {
 		return false, errors.New("remote server did not return a successful response")
 	}

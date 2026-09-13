@@ -20,7 +20,7 @@ type BaseWidget struct {
 	impl       fyne.Widget
 	themeCache fyne.Theme
 
-	toolTipText string // Попытка сделать нормальный тултип
+	toolTipText string
 }
 
 // ExtendBaseWidget is used by an extending widget to make use of BaseWidget functionality.
@@ -227,9 +227,15 @@ func (*noCopy) Lock() {}
 
 func (*noCopy) Unlock() {}
 
+// SetToolTip stores a tooltip text on the widget.
+// The tooltip text is not wired into any automatic popup mechanism by the
+// widget itself; an external tooltip.Manager may read it via ToolTip().
+// Must be called on the main goroutine (Fyne v2.6+ contract).
 func (bw *BaseWidget) SetToolTip(text string) {
 	bw.toolTipText = text
 }
+
+// ToolTip returns the tooltip text previously stored via SetToolTip.
 func (bw *BaseWidget) ToolTip() string {
 	return bw.toolTipText
 }

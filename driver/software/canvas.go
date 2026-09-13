@@ -145,9 +145,6 @@ func (c *canvas) OnTypedRune() func(rune) {
 }
 
 func (c *canvas) Overlays() fyne.OverlayStack {
-	c.propertyLock.Lock()
-	defer c.propertyLock.Unlock()
-
 	return &c.overlays
 }
 
@@ -220,9 +217,10 @@ func (c *canvas) SetOnTypedRune(handler func(rune)) {
 func (c *canvas) SetPadded(padded bool) {
 	c.propertyLock.Lock()
 	c.padded = padded
+	size := c.size
 	c.propertyLock.Unlock()
 
-	c.doResize(c.Size())
+	c.doResize(size)
 }
 
 func (c *canvas) SetScale(scale float32) {
@@ -264,7 +262,11 @@ func (c *canvas) doResize(size fyne.Size) {
 
 	if padded {
 		padding := theme.Padding()
-		content.Resize(size.Subtract(fyne.NewSquareSize(padding * 2)))
+		inner := size.Subtract(fyne.NewSquareSize(padding * 2))
+		if inner.Width < 0 || inner.Height < 0 {
+			inner = fyne.NewSize(0, 0)
+		}
+		content.Resize(inner)
 		content.Move(fyne.NewSquareOffsetPos(padding))
 	} else {
 		content.Resize(size)

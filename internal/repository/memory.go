@@ -113,7 +113,7 @@ func (n *nodeReaderWriter) Write(p []byte) (int, error) {
 	// copy the data into the node buffer
 	for start := n.writeCursor; n.writeCursor < start+len(p); n.writeCursor++ {
 		// extend the file if needed
-		if len(n.repo.Data) < n.writeCursor+len(p) {
+		if len(n.repo.Data[n.path]) <= n.writeCursor {
 			n.repo.Data[n.path] = append(n.repo.Data[n.path], 0)
 		}
 		n.repo.Data[n.path][n.writeCursor] = p[n.writeCursor-start]

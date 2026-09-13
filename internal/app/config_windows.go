@@ -8,8 +8,11 @@ import (
 )
 
 func rootConfigDir() string {
-	homeDir, _ := os.UserHomeDir()
+	if dir, err := os.UserConfigDir(); err == nil && dir != "" {
+		return filepath.Join(dir, "fyne")
+	}
 
-	desktopConfig := filepath.Join(filepath.Join(homeDir, "AppData"), "Roaming")
-	return filepath.Join(desktopConfig, "fyne")
+	// fallback only if UserConfigDir errored (extremely rare on Windows)
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, "AppData", "Roaming", "fyne")
 }

@@ -213,6 +213,7 @@ func GenericMove(source fyne.URI, destination fyne.URI) error {
 	if err != nil {
 		return err
 	}
+	defer srcReader.Close()
 
 	dstWriter, err := destwrepo.Writer(destination)
 	if err != nil {
@@ -227,7 +228,6 @@ func GenericMove(source fyne.URI, destination fyne.URI) error {
 	}
 
 	// Finally, delete the source only if the move finished without error.
-	srcReader.Close()
 	return srcwrepo.Delete(source)
 }
 
@@ -235,9 +235,10 @@ func genericCopyMoveListable(source, destination fyne.URI, repo Repository, dele
 	lister, ok1 := repo.(ListableRepository)
 	mover, ok2 := repo.(MovableRepository)
 	copier, ok3 := repo.(CopyableRepository)
+	hier, ok4 := repo.(HierarchicalRepository)
 
-	if !ok1 || (deleteSource && !ok2) || (!deleteSource && !ok3) {
-		return ErrOperationNotSupported // cannot move a lister in a non-listable/movable repo
+	if !ok1 || !ok4 || (deleteSource && !ok2) || (!deleteSource && !ok3) {
+		return ErrOperationNotSupported
 	}
 
 	err := lister.CreateListable(destination)
@@ -250,7 +251,10 @@ func genericCopyMoveListable(source, destination fyne.URI, repo Repository, dele
 		return err
 	}
 	for _, child := range list {
-		newChild, _ := repo.(HierarchicalRepository).Child(destination, child.Name())
+		newChild, err := hier.Child(destination, child.Name())
+		if err != nil {
+			return err
+		}
 		if deleteSource {
 			err = mover.Move(child, newChild)
 		} else {

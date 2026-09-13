@@ -1,3 +1,5 @@
+// xssyne/internal/driver/glfw/menu_bar.go
+
 package glfw
 
 import (
@@ -14,7 +16,7 @@ var _ fyne.Widget = (*MenuBar)(nil)
 // MenuBar is a widget for displaying a fyne.MainMenu in a bar.
 type MenuBar struct {
 	widget.Base
-	Items []fyne.CanvasObject
+	Items []fyne.CanvasObject // *menuBarItem или *menuBarSeparator
 
 	active     bool
 	activeItem *menuBarItem
@@ -23,32 +25,49 @@ type MenuBar struct {
 
 // NewMenuBar creates a menu bar populated with items from the passed main menu structure.
 func NewMenuBar(mainMenu *fyne.MainMenu, canvas fyne.Canvas) *MenuBar {
-	items := make([]fyne.CanvasObject, len(mainMenu.Items))
-	b := &MenuBar{Items: items, canvas: canvas}
+	b := &MenuBar{canvas: canvas}
 	b.ExtendBaseWidget(b)
-	for i, menu := range mainMenu.Items {
+	for _, menu := range mainMenu.Items {
+		if menu.IsSeparator {
+			sep := &menuBarSeparator{}
+			sep.ExtendBaseWidget(sep)
+			b.Items = append(b.Items, sep)
+			continue
+		}
 		barItem := &menuBarItem{Menu: menu, Parent: b}
 		barItem.ExtendBaseWidget(barItem)
-		items[i] = barItem
+		b.Items = append(b.Items, barItem)
 	}
 	return b
 }
 
 // CreateRenderer returns a new renderer for the menu bar.
 func (b *MenuBar) CreateRenderer() fyne.WidgetRenderer {
-	cont := container.NewHBox(b.Items...)
+	cont := container.NewWithoutLayout()
+	for _, item := range b.Items {
+		cont.Add(item)
+	}
 	background := canvas.NewRectangle(theme.Color(theme.ColorNameBackground))
 	widget.ApplyShadowForLevel(&background.Shadow, widget.MenuBarLevel, theme.Color(theme.ColorNameShadow))
+
+	// Тонкая линия под полосой меню — визуально отделяет bar от
+	// рабочей области окна. Рисуется над background, но под cont,
+	// чтобы не перекрывать содержимое.
+	underline := canvas.NewRectangle(theme.Color(theme.ColorNameSeparator))
+
 	underlay := &menuBarUnderlay{action: b.deactivate}
 	underlay.ExtendBaseWidget(underlay)
-	objects := []fyne.CanvasObject{underlay, background, cont}
+	objects := []fyne.CanvasObject{underlay, background, underline, cont}
 	for _, item := range b.Items {
-		objects = append(objects, item.(*menuBarItem).Child())
+		if barItem, ok := item.(*menuBarItem); ok {
+			objects = append(objects, barItem.Child())
+		}
 	}
-	return &menuBarRenderer{
+	return &menuBarRenderer{ // Отражает порядок слоёв
 		widget.NewBaseRenderer(objects),
 		b,
 		background,
+		underline,
 		underlay,
 		cont,
 	}
@@ -63,7 +82,20 @@ func (b *MenuBar) IsActive() bool {
 // Toggle changes the activation state of the menu bar.
 // On activation, the first item will become active.
 func (b *MenuBar) Toggle() {
-	b.toggle(b.Items[0].(*menuBarItem))
+	first := b.firstMenuBarItem()
+	if first != nil {
+		b.toggle(first)
+	}
+}
+
+// firstMenuBarItem возвращает первый не-сепараторный пункт.
+func (b *MenuBar) firstMenuBarItem() *menuBarItem {
+	for _, item := range b.Items {
+		if barItem, ok := item.(*menuBarItem); ok {
+			return barItem
+		}
+	}
+	return nil
 }
 
 func (b *MenuBar) activateChild(item *menuBarItem) {
@@ -122,6 +154,7 @@ type menuBarRenderer struct {
 	widget.BaseRenderer
 	b          *MenuBar
 	background *canvas.Rectangle
+	underline  *canvas.Rectangle
 	underlay   *menuBarUnderlay
 	cont       *fyne.Container
 }
@@ -141,6 +174,15 @@ func (r *menuBarRenderer) Layout(size fyne.Size) {
 	innerPadding := theme.InnerPadding()
 	r.cont.Resize(fyne.NewSize(size.Width-2*innerPadding, size.Height))
 	r.cont.Move(fyne.NewPos(innerPadding, 0))
+
+	x := float32(0)
+	for _, item := range r.b.Items {
+		min := item.MinSize()
+		item.Resize(fyne.NewSize(min.Width, size.Height))
+		item.Move(fyne.NewPos(x, 0))
+		x += min.Width
+	}
+
 	if item := r.b.activeItem; item != nil {
 		if item.Child().Size().IsZero() {
 			item.Child().Resize(item.Child().MinSize())
@@ -150,6 +192,10 @@ func (r *menuBarRenderer) Layout(size fyne.Size) {
 
 	r.background.Move(fyne.NewPos(0, 0))
 	r.background.Resize(size)
+
+	const underlineHeight float32 = 1
+	r.underline.Resize(fyne.NewSize(size.Width, underlineHeight))
+	r.underline.Move(fyne.NewPos(0, size.Height-underlineHeight))
 }
 
 func (r *menuBarRenderer) MinSize() fyne.Size {
@@ -161,6 +207,10 @@ func (r *menuBarRenderer) Refresh() {
 	r.background.FillColor = theme.Color(theme.ColorNameBackground)
 	r.background.Shadow.Color = theme.Color(theme.ColorNameShadow)
 	r.background.Refresh()
+
+	r.underline.FillColor = theme.Color(theme.ColorNameSeparator)
+	r.underline.Refresh()
+
 	canvas.Refresh(r.b)
 }
 

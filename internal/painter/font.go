@@ -296,17 +296,18 @@ func walkString(faces shaping.Fontmap, s string, textSize fixed.Int26_6, style f
 	ins := segmenter.Split(in, faces)
 	for _, in := range ins {
 		inEnd := in.RunEnd
+		base := in.RunStart
 
 		pending := false
 		for i, r := range in.Text[in.RunStart:in.RunEnd] {
 			if r == '\t' {
 				if pending {
-					in.RunEnd = i
+					in.RunEnd = base + i
 					x = shapeCallback(in, x, scale, cb)
 				}
 				x = tabStop(spacew, x, style.TabWidth)
 
-				in.RunStart = i + 1
+				in.RunStart = base + i + 1
 				in.RunEnd = inEnd
 				pending = false
 			} else {
@@ -380,16 +381,20 @@ type noopLogger struct{}
 func (n noopLogger) Printf(string, ...any) {}
 
 type dynamicFontMap struct {
+	mu     sync.RWMutex
 	faces  []*font.Face
 	family string
 }
 
 func (d *dynamicFontMap) ResolveFace(r rune) *font.Face {
+	d.mu.RLock()
 	for _, f := range d.faces {
 		if _, ok := f.NominalGlyph(r); ok {
+			d.mu.RUnlock()
 			return f
 		}
 	}
+	d.mu.RUnlock()
 
 	toAdd := lookupRuneFont(r, d.family, font.Aspect{})
 	if toAdd != nil {
@@ -397,9 +402,14 @@ func (d *dynamicFontMap) ResolveFace(r rune) *font.Face {
 		return toAdd
 	}
 
-	return d.faces[0]
+	d.mu.RLock()
+	f := d.faces[0]
+	d.mu.RUnlock()
+	return f
 }
 
 func (d *dynamicFontMap) addFace(f *font.Face) {
+	d.mu.Lock()
 	d.faces = append(d.faces, f)
+	d.mu.Unlock()
 }

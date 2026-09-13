@@ -1,6 +1,10 @@
+// xssyne/internal/driver/glfw/menu_bar_item.go
+
 package glfw
 
 import (
+	"image/color"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/driver/desktop"
@@ -41,15 +45,31 @@ func (i *menuBarItem) CreateRenderer() fyne.WidgetRenderer {
 	background := canvas.NewRectangle(theme.Color(theme.ColorNameHover))
 	background.CornerRadius = theme.SelectionRadiusSize()
 	background.Hide()
-	text := canvas.NewText(i.Menu.Label, theme.Color(theme.ColorNameForeground))
-	objects := []fyne.CanvasObject{background, text}
 
-	return &menuBarItemRenderer{
-		widget.NewBaseRenderer(objects),
-		i,
-		text,
-		background,
+	indicator := canvas.NewRectangle(theme.Color(theme.ColorNameMenuBarAccent))
+	indicator.Hide()
+
+	text := canvas.NewText(i.Menu.Label, theme.Color(theme.ColorNameForeground))
+	shadow := canvas.NewText(i.Menu.Label, color.NRGBA{R: 0, G: 0, B: 0, A: 0x90})
+	shadow.TextStyle = text.TextStyle
+	objects := []fyne.CanvasObject{background, indicator, shadow, text}
+
+	r := &menuBarItemRenderer{
+		BaseRenderer: widget.NewBaseRenderer(objects),
+		i:            i,
+		text:         text,
+		shadow:       shadow,
+		background:   background,
+		indicator:    indicator,
 	}
+	if i.Menu.Icon != nil {
+		icon := canvas.NewImageFromResource(i.Menu.Icon)
+		icon.FillMode = canvas.ImageFillContain
+		r.icon = icon
+		r.SetObjects(append(objects, icon))
+	}
+
+	return r
 }
 
 func (i *menuBarItem) FocusGained() {
@@ -103,7 +123,7 @@ func (i *menuBarItem) MouseOut() {
 }
 
 // Tapped toggles the activation state of the menu bar.
-// It shows the item’s menu if the bar is activated and hides it if the bar is deactivated.
+// It shows the item's menu if the bar is activated and hides it if the bar is deactivated.
 func (i *menuBarItem) Tapped(*fyne.PointEvent) {
 	i.Parent.toggle(i)
 }
@@ -134,36 +154,107 @@ type menuBarItemRenderer struct {
 	widget.BaseRenderer
 	i          *menuBarItem
 	text       *canvas.Text
+	shadow     *canvas.Text
 	background *canvas.Rectangle
+	indicator  *canvas.Rectangle
+	icon       *canvas.Image
 }
 
 func (r *menuBarItemRenderer) Layout(size fyne.Size) {
 	padding := r.padding()
+	inlineIcon := theme.IconInlineSize()
+	innerPad := theme.InnerPadding()
 
 	r.text.TextSize = theme.TextSize()
 	r.text.Color = theme.Color(theme.ColorNameForeground)
 	r.text.Resize(r.text.MinSize())
-	r.text.Move(fyne.NewPos(padding.Width/2, padding.Height/2))
+
+	textX := padding.Width / 2
+	textY := (size.Height - r.text.MinSize().Height) / 2
+
+	if r.icon != nil {
+		r.icon.Resize(fyne.NewSquareSize(inlineIcon))
+		iconY := (size.Height - inlineIcon) / 2
+		r.icon.Move(fyne.NewPos(textX, iconY))
+		textX += inlineIcon + innerPad/2
+	}
+
+	// Тень и текст позиционируются один раз, после учёта иконки.
+	// Синхронизируем метрику, чтобы при смене TextStyle (Bold в
+	// активном пункте) MinSize совпадал с фактическим рендером.
+	r.shadow.TextSize = r.text.TextSize
+	r.shadow.TextStyle = r.text.TextStyle
+	r.shadow.Resize(r.text.Size())
+	r.shadow.Move(fyne.NewPos(textX+1, textY+1))
+	r.text.Move(fyne.NewPos(textX, textY))
 
 	r.background.Resize(size)
+
+	const indicatorHeight float32 = 2
+	r.indicator.Resize(fyne.NewSize(size.Width, indicatorHeight))
+	r.indicator.Move(fyne.NewPos(0, size.Height-indicatorHeight))
 }
 
 func (r *menuBarItemRenderer) MinSize() fyne.Size {
-	return r.text.MinSize().Add(r.padding())
+	base := r.text.MinSize().Add(r.padding())
+	if r.icon != nil {
+		base = base.AddWidthHeight(theme.IconInlineSize()+theme.InnerPadding()/2, 0)
+	}
+	return base
 }
 
 func (r *menuBarItemRenderer) Refresh() {
 	r.background.CornerRadius = theme.SelectionRadiusSize()
-	if r.i.active && r.i.Parent.active {
-		r.background.FillColor = theme.Color(theme.ColorNameFocus)
-		r.background.Show()
-	} else if r.i.hovered && !r.i.Parent.active {
-		r.background.FillColor = theme.Color(theme.ColorNameHover)
-		r.background.Show()
+
+	// Тень скрыта в светлой теме целиком; в тёмной — показывается
+	// всегда, независимо от состояния (isActive/hovered/default).
+	// Вынесено из switch, потому что Show() вызывался только в isActive,
+	// и при возврате из активного в обычное состояние тень могла остаться
+	// скрытой.
+	if fyne.CurrentApp().Settings().ThemeVariant() == theme.VariantLight {
+		r.shadow.Hide()
 	} else {
-		r.background.Hide()
+		r.shadow.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 0x90}
+		r.shadow.TextStyle = r.text.TextStyle
+		r.shadow.Show()
 	}
+
+	accent := theme.Color(theme.ColorNameMenuBarAccent)
+	isActive := r.i.active && r.i.Parent.active
+
+	switch {
+	case isActive:
+		r.background.FillColor = theme.Color(theme.ColorNameMenuBarActiveBg)
+		r.background.Show()
+		r.indicator.FillColor = accent
+		r.indicator.Show()
+		r.text.Color = accent
+		r.text.TextStyle = fyne.TextStyle{Bold: true}
+
+	case r.i.hovered && !r.i.Parent.active:
+		r.background.FillColor = theme.Color(theme.ColorNameMenuBarHoverBg)
+		r.background.Show()
+		r.indicator.FillColor = accent
+		r.indicator.Show()
+		r.text.Color = theme.Color(theme.ColorNameForeground)
+		r.text.TextStyle = fyne.TextStyle{}
+
+	default:
+		r.background.Hide()
+		r.indicator.Hide()
+		r.text.Color = theme.Color(theme.ColorNameForeground)
+		r.text.TextStyle = fyne.TextStyle{}
+	}
+
+	// Синхронизируем TextStyle тени с текстом. Ветки switch выше меняют
+	// Bold у text, а тень всегда должна иметь ту же метрику, иначе
+	// «двоит».
+	r.shadow.TextStyle = r.text.TextStyle
+
 	r.background.Refresh()
+	r.indicator.Refresh()
+	r.shadow.Refresh()
+	r.text.Refresh()
 	canvas.Refresh(r.i)
 }
 

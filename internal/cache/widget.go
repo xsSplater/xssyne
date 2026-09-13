@@ -15,14 +15,32 @@ type isBaseWidget interface {
 // Renderer looks up the render implementation for a widget
 // If one does not exist, it creates and caches a renderer for the widget.
 func Renderer(wid fyne.Widget) fyne.WidgetRenderer {
-	renderer, ok := CachedRenderer(wid)
-	if !ok && wid != nil {
-		renderer = wid.CreateRenderer()
-		rinfo := &rendererInfo{renderer: renderer}
-		rinfo.setAlive()
-		renderers.Store(wid, rinfo)
+	if wid == nil {
+		return nil
 	}
 
+	if wd, ok := wid.(isBaseWidget); ok {
+		if wd.super() != nil {
+			wid = wd.super()
+		}
+	}
+
+	if rinfo, ok := renderers.Load(wid); ok {
+		rinfo.setAlive()
+		return rinfo.renderer
+	}
+
+	renderer := wid.CreateRenderer()
+	rinfo := &rendererInfo{renderer: renderer}
+	rinfo.setAlive()
+
+	actual, loaded := renderers.LoadOrStore(wid, rinfo)
+	if loaded {
+		// проиграли гонку: наш рендерер не пригодился, освобождаем ресурсы
+		renderer.Destroy()
+		actual.setAlive()
+		return actual.renderer
+	}
 	return renderer
 }
 

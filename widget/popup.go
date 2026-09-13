@@ -17,9 +17,9 @@ type PopUp struct {
 	BaseWidget
 
 	Content fyne.CanvasObject
-	Canvas	fyne.Canvas
+	Canvas  fyne.Canvas
 
-	overlay		  *widget.OverlayContainer
+	overlay       *widget.OverlayContainer
 	modal, manual bool
 }
 
@@ -171,7 +171,7 @@ func ShowModalPopUp(content fyne.CanvasObject, canvas fyne.Canvas) {
 }
 
 type popUpBaseRenderer struct {
-	popUp	   *PopUp
+	popUp      *PopUp
 	background *canvas.Rectangle
 }
 
@@ -237,5 +237,13 @@ func withRelativePosition(rel fyne.Position, to fyne.CanvasObject, f func(positi
 // SetModal sets whether this pop-up is modal.
 // Modal pop-ups block interactions with the underlying canvas.
 func (p *PopUp) SetModal(modal bool) {
+	if p.modal == modal {
+		return
+	}
 	p.modal = modal
+	if p.overlay != nil {
+		// overlay уже показан: пересоздаём его с нужными параметрами
+		p.Hide()
+		p.Show()
+	}
 }

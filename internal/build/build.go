@@ -19,7 +19,11 @@ func MigratedToFyneDo() bool {
 	}
 
 	migrateCheck.Do(func() {
-		v, ok := fyne.CurrentApp().Metadata().Migrations["fyneDo"]
+		app := fyne.CurrentApp()
+		if app == nil {
+			return // no app yet; assume not migrated
+		}
+		v, ok := app.Metadata().Migrations["fyneDo"]
 		if ok {
 			migratedFyneDo = v
 		}

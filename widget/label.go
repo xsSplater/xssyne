@@ -100,12 +100,14 @@ func (l *Label) CreateRenderer() fyne.WidgetRenderer {
 	l.ExtendBaseWidget(l)
 	l.syncSegments()
 
-	l.selection = &focusSelectable{}
-	l.selection.ExtendBaseWidget(l.selection)
-	l.selection.focus = l.selection
-	l.selection.style = l.TextStyle
-	l.selection.theme = l.Theme()
-	l.selection.provider = l.provider
+	if l.Selectable {
+		l.selection = &focusSelectable{}
+		l.selection.ExtendBaseWidget(l.selection)
+		l.selection.focus = l.selection
+		l.selection.style = l.TextStyle
+		l.selection.theme = l.Theme()
+		l.selection.provider = l.provider
+	}
 
 	return &labelRenderer{l}
 }
@@ -218,7 +220,9 @@ func (r *labelRenderer) Destroy() {
 }
 
 func (r *labelRenderer) Layout(s fyne.Size) {
-	r.l.selection.Resize(s)
+	if r.l.selection != nil {
+		r.l.selection.Resize(s)
+	}
 	r.l.provider.Resize(s)
 }
 

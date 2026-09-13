@@ -32,6 +32,9 @@ func drawBlur(c fyne.Canvas, blurObj *canvas.Blur, pos fyne.Position, base *imag
 	scaledHeight := scale.ToScreenCoordinate(c, blurObj.Size().Height)
 	scaledX, scaledY := scale.ToScreenCoordinate(c, pos.X), scale.ToScreenCoordinate(c, pos.Y)
 	bounds := clip.Intersect(image.Rect(scaledX, scaledY, scaledX+scaledWidth, scaledY+scaledHeight))
+	if bounds.Empty() {
+		return
+	}
 
 	crop := base.SubImage(bounds)
 	blurred := blur.Gaussian(crop, float64(blurObj.Radius*c.Scale()))
@@ -42,7 +45,7 @@ func drawBlur(c fyne.Canvas, blurObj *canvas.Blur, pos fyne.Position, base *imag
 		applyRoundedCorners(blurred, cornerRadius*c.Scale())
 	}
 
-	draw.Draw(base, base.Bounds(), blurred, image.Point{}, draw.Over)
+	draw.Draw(base, bounds, blurred, image.Point{}, draw.Over)
 }
 
 func drawArc(c fyne.Canvas, arc *canvas.Arc, pos fyne.Position, base *image.NRGBA, clip image.Rectangle) {
@@ -640,7 +643,12 @@ func applyRoundedCorners(img image.Image, radius float32) {
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 	rInt := int(math.Ceil(float64(radius)))
-	r := minInt(rInt, minInt(w, h))
+	// радиус больше половины меньшей стороны приводит к перекрытию соседних углов,
+	// поэтому клампим — иначе границы «съедают» середину изображения
+	r := minInt(rInt, minInt(w, h)/2)
+	if r <= 0 {
+		return
+	}
 	minX, minY := bounds.Min.X, bounds.Min.Y
 	maxX, maxY := bounds.Max.X, bounds.Max.Y
 

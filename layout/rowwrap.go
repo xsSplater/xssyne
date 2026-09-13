@@ -46,9 +46,6 @@ func (l *rowWrapLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	if len(objects) == 0 {
 		return fyne.NewSize(0, 0)
 	}
-	if !l.minSize.IsZero() {
-		return l.minSize
-	}
 	var maxW, maxH float32
 	var objCount int
 	for _, o := range objects {
@@ -60,6 +57,7 @@ func (l *rowWrapLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 		maxW = fyne.Max(maxW, s.Width)
 		maxH = fyne.Max(maxH, s.Height)
 	}
+	// при отсутствии информации о доступной ширине предполагаем одну колонку
 	return fyne.NewSize(maxW, l.minHeight(maxH, objCount))
 }
 

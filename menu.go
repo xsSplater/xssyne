@@ -1,3 +1,5 @@
+// xssyne/menu.go
+
 package fyne
 
 type systemTrayDriver interface {
@@ -11,11 +13,37 @@ type systemTrayDriver interface {
 type Menu struct {
 	Label string
 	Items []*MenuItem
+	// Icon — опциональная иконка слева от Label в верхнем меню.
+	//
+	// Since: xssyne
+	Icon Resource
+	// IsSeparator — если true, Menu не является кликабельным пунктом,
+	// а служит вертикальным разделителем в MenuBar. Label, Items, Icon
+	// игнорируются. Работает только на desktop (Windows/Linux);
+	// на macOS меню рисует AppKit — там сепаратор пропускается при
+	// построении структуры.
+	//
+	// Since: xssyne
+	IsSeparator bool
 }
 
 // NewMenu creates a new menu given the specified label (to show in a [MainMenu]) and list of items to display.
 func NewMenu(label string, items ...*MenuItem) *Menu {
 	return &Menu{Label: label, Items: items}
+}
+
+// NewMenuWithIcon — как NewMenu, но с иконкой (для верхнего меню).
+//
+// Since: xssyne
+func NewMenuWithIcon(label string, icon Resource, items ...*MenuItem) *Menu {
+	return &Menu{Label: label, Items: items, Icon: icon}
+}
+
+// NewMenuSeparator создаёт пункт-разделитель для верхнего меню.
+//
+// Since: xssyne
+func NewMenuSeparator() *Menu {
+	return &Menu{IsSeparator: true}
 }
 
 // Refresh will instruct this menu to update its display.
@@ -57,6 +85,38 @@ type MenuItem struct {
 	Icon Resource
 	// Since: 2.2
 	Shortcut Shortcut
+
+	// Danger — пункт отображается «опасным» цветом (красный) для действий
+	// типа «Удалить», «Выйти без сохранения». Не влияет на поведение,
+	// только на цвет текста.
+	//
+	// Since: xssyne
+	Danger bool
+
+	// Header — пункт-заголовок группы. Не кликается, выделен жирным,
+	// имеет фон. Используется внутри выпадающего меню для визуальной
+	// группировки пунктов.
+	//
+	// Since: xssyne
+	Header bool
+
+	// Subtitle — вторая строка под основным текстом, мелким шрифтом.
+	// Если задана, высота пункта увеличивается. Header-пункты Subtitle
+	// игнорируют.
+	//
+	// Since: xssyne
+	Subtitle string
+	// CheckedIcon — кастомная иконка для отмеченного пункта. Если nil,
+	// используется стандартная (IconNameConfirm).
+	//
+	// Since: xssyne
+	CheckedIcon Resource
+
+	// UncheckedIcon — кастомная иконка для неотмеченного пункта. Если nil,
+	// ничего не рисуется (поведение Fyne по умолчанию).
+	//
+	// Since: xssyne
+	UncheckedIcon Resource
 }
 
 // NewMenuItem creates a new menu item from the passed label and action parameters.

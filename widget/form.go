@@ -85,13 +85,7 @@ func (f *Form) AppendItem(item *FormItem) {
 	f.ExtendBaseWidget(f) // could be called before render
 
 	f.Items = append(f.Items, item)
-	if f.itemGrid != nil {
-		f.itemGrid.Add(f.createLabel(item))
-		f.itemGrid.Add(f.createInput(item))
-		f.setUpValidation(item.Widget, len(f.Items)-1)
-	}
-
-	f.Refresh()
+	f.Refresh() // ensureRenderItems will create label/input and set up validation
 }
 
 // MinSize returns the size that this widget should not shrink below

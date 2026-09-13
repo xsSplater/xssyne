@@ -135,8 +135,16 @@ func (s *selectable) Tapped(*fyne.PointEvent) {
 }
 
 func (s *selectable) TappedSecondary(ev *fyne.PointEvent) {
+	if s.focus == nil {
+		return
+	}
+	canvasObj, ok := s.focus.(fyne.CanvasObject)
+	if !ok {
+		return
+	}
+
 	app := fyne.CurrentApp()
-	c := app.Driver().CanvasForObject(s.focus.(fyne.CanvasObject))
+	c := app.Driver().CanvasForObject(canvasObj)
 	if c == nil {
 		return
 	}
@@ -382,7 +390,14 @@ func (r *selectableRenderer) buildSelection() {
 }
 
 func (s *selectable) grabFocus() {
-	if c := fyne.CurrentApp().Driver().CanvasForObject(s.focus.(fyne.CanvasObject)); c != nil {
+	if s.focus == nil {
+		return
+	}
+	canvasObj, ok := s.focus.(fyne.CanvasObject)
+	if !ok {
+		return
+	}
+	if c := fyne.CurrentApp().Driver().CanvasForObject(canvasObj); c != nil {
 		c.Focus(s.focus)
 	}
 }

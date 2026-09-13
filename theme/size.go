@@ -1,3 +1,5 @@
+// xssyne/theme/size.go
+
 package theme
 
 import (
@@ -141,6 +143,11 @@ const (
 	//
 	// Since: 2.8
 	SizeNameMenuRadius fyne.ThemeSizeName = "menuRadius"
+
+	// SizeNameMenuBorderWidth is the name of theme lookup for menu border width.
+	//
+	// Since: xssyne
+	SizeNameMenuBorderWidth fyne.ThemeSizeName = "menuBorderWidth"
 )
 
 // CaptionTextSize returns the size for caption text.
@@ -298,6 +305,8 @@ func (t *builtinTheme) Size(s fyne.ThemeSizeName) float32 {
 		return 5
 	case SizeNameMenuRadius:
 		return 3
+	case SizeNameMenuBorderWidth:
+		return 1
 
 	default:
 		return 0

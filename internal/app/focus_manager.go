@@ -19,6 +19,12 @@ func NewFocusManager(c fyne.CanvasObject) *FocusManager {
 // Focus focuses the given obj.
 func (f *FocusManager) Focus(obj fyne.Focusable) bool {
 	if obj != nil {
+		objAsCanvas, ok := obj.(fyne.CanvasObject)
+		if !ok {
+			// a Focusable that is not a CanvasObject cannot exist inside a canvas tree
+			return false
+		}
+
 		var hiddenAncestor fyne.CanvasObject
 		hidden := false
 		found := driver.WalkCompleteObjectTree(
@@ -27,7 +33,7 @@ func (f *FocusManager) Focus(obj fyne.Focusable) bool {
 				if hiddenAncestor == nil && !object.Visible() {
 					hiddenAncestor = object
 				}
-				if object == obj.(fyne.CanvasObject) {
+				if object == objAsCanvas {
 					hidden = hiddenAncestor != nil
 					return true
 				}
@@ -108,6 +114,15 @@ func (f *FocusManager) nextInChain(current fyne.Focusable) fyne.Focusable {
 }
 
 func (f *FocusManager) nextWithWalker(current fyne.Focusable, walker walkerFunc) fyne.Focusable {
+	var currentCanvas fyne.CanvasObject
+	if current != nil {
+		var ok bool
+		currentCanvas, ok = current.(fyne.CanvasObject)
+		if !ok {
+			return nil
+		}
+	}
+
 	var next fyne.Focusable
 	found := current == nil // if we have no starting point then pretend we matched already
 	walker(f.content, func(obj fyne.CanvasObject, _ fyne.Position, _ fyne.Position, _ fyne.Size) bool {
@@ -129,7 +144,7 @@ func (f *FocusManager) nextWithWalker(current fyne.Focusable, walker walkerFunc)
 			next = focus
 		}
 
-		if obj == current.(fyne.CanvasObject) {
+		if obj == currentCanvas {
 			found = true
 		}
 

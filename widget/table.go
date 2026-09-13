@@ -3,7 +3,6 @@ package widget
 import (
 	"math"
 	"strconv"
-	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -118,17 +117,16 @@ type Table struct {
 	hoverHeaderRow, hoverHeaderCol, dragCol, dragRow             int
 	dragStartPos                                                 fyne.Position
 
-	// Добавляем поля для отслеживания размеров и синхронизации
-	propertyLock sync.RWMutex // блокировка для безопасного доступа
-	rowCount     int          // текущее количество строк
-	colCount     int          // текущее количество столбцов
-	rowHeight    float32      // высота строки
-	visibleRows  int          // количество видимых строк
+	// Кэш метрик. Обновляется в главной горутине (см. контракт Fyne v2.6+).
+	rowCount    int
+	colCount    int
+	rowHeight   float32
+	visibleRows int
 
-	// Выделение более одной строки
+	// Выделение более одной строки.
 	selectedRows       map[int]bool
-	lastSelectedRow    int // для Shift-диапазона (последняя строка, где был клик)
-	selectionAnchorRow int // начальная строка для диапазона (меняется только при сбросе или Ctrl+клик)
+	lastSelectedRow    int // последняя строка, где был клик (для Shift-диапазона)
+	selectionAnchorRow int // начальная строка диапазона (меняется только при сбросе или Ctrl+клик)
 }
 
 // NewTable returns a new performant table widget defined by the passed functions.
@@ -248,7 +246,7 @@ func (t *Table) FocusGained() {
 // FocusLost is called after this Table has lost focus.
 func (t *Table) FocusLost() {
 	t.focused = false
-	t.Refresh() // Item(t.currentHighlight)
+	t.Refresh()
 }
 
 func (t *Table) MouseIn(ev *desktop.MouseEvent) {
@@ -257,7 +255,6 @@ func (t *Table) MouseIn(ev *desktop.MouseEvent) {
 
 // MouseDown response to desktop mouse event
 func (t *Table) MouseDown(e *desktop.MouseEvent) {
-	// Передаём модификаторы из события мыши
 	t.tapped(e.Position, e.Modifier)
 }
 
@@ -285,7 +282,6 @@ func (t *Table) RefreshItem(id TableCellID) {
 
 // Select will mark the specified cell as selected.
 func (t *Table) Select(id TableCellID, modifiers fyne.KeyModifier) {
-	// Валидация
 	if t.Length == nil {
 		return
 	}
@@ -294,7 +290,7 @@ func (t *Table) Select(id TableCellID, modifiers fyne.KeyModifier) {
 		return
 	}
 
-	// 1. Без модификаторов: сброс всего выделения, выделить только текущую строку
+	// 1. Без модификаторов: сброс всего выделения, выделить только текущую строку.
 	if modifiers == 0 {
 		t.selectedRows = make(map[int]bool)
 		t.selectedRows[id.Row] = true
@@ -305,18 +301,17 @@ func (t *Table) Select(id TableCellID, modifiers fyne.KeyModifier) {
 		if f := t.OnSelected; f != nil {
 			f(id)
 		}
+		t.Refresh()
 		return
 	}
 
-	// 2. Ctrl+клик: переключение состояния текущей строки
+	// 2. Ctrl+клик: переключение состояния текущей строки.
 	if modifiers&fyne.KeyModifierControl != 0 {
-		// Убираем проверку на Shift, т.к. Ctrl+Shift не обрабатываем отдельно
 		if t.selectedRows[id.Row] {
 			delete(t.selectedRows, id.Row)
 			if len(t.selectedRows) == 0 {
 				t.selectedCell = nil
 			} else {
-				// Оставляем selectedCell на первой оставшейся строке
 				for row := range t.selectedRows {
 					t.selectedCell = &TableCellID{Row: row, Col: 0}
 					break
@@ -330,16 +325,15 @@ func (t *Table) Select(id TableCellID, modifiers fyne.KeyModifier) {
 		if f := t.OnSelected; f != nil {
 			f(id)
 		}
+		t.Refresh()
 		return
 	}
 
-	// 3. Shift+клик: сбросить всё выделение и выделить диапазон
+	// 3. Shift+клик: сбросить всё и выделить диапазон.
 	if modifiers&fyne.KeyModifierShift != 0 {
-		// Если якорь не установлен, используем текущую строку как начало
 		if t.selectionAnchorRow < 0 {
 			t.selectionAnchorRow = id.Row
 		}
-		// Сбрасываем всё выделение
 		t.selectedRows = make(map[int]bool)
 		start, end := t.selectionAnchorRow, id.Row
 		if start > end {
@@ -354,6 +348,7 @@ func (t *Table) Select(id TableCellID, modifiers fyne.KeyModifier) {
 		if f := t.OnSelected; f != nil {
 			f(id)
 		}
+		t.Refresh()
 		return
 	}
 }
@@ -380,7 +375,6 @@ func (t *Table) SetColumnWidth(id int, width float32) {
 	}
 	t.columnWidths[id] = width
 	t.Refresh()
-	// Принудительно пересоздаём все ячейки, чтобы updateCell вызвался с новыми параметрами
 	if t.cells != nil {
 		t.cells.refreshForID(allTableCellsID)
 	}
@@ -438,10 +432,8 @@ func (t *Table) TypedKey(event *fyne.KeyEvent) {
 		t.RefreshItem(t.currentHighlight)
 		modifiers := fyne.CurrentApp().Driver().(desktop.Driver).CurrentKeyModifiers()
 		if modifiers&fyne.KeyModifierShift != 0 {
-			// выделить диапазон от lastSelectedRow до новой строки
 			t.Select(t.currentHighlight, fyne.KeyModifierShift)
 		} else {
-			// обновляем lastSelectedRow при перемещении без Shift
 			t.lastSelectedRow = t.currentHighlight.Row
 		}
 
@@ -482,7 +474,6 @@ func (t *Table) TypedKey(event *fyne.KeyEvent) {
 		t.RefreshItem(t.currentHighlight)
 	}
 
-	// Вызов OnHighlighted, если изменилась подсветка
 	if oldHighlight != t.currentHighlight {
 		if f := t.OnHighlighted; f != nil {
 			f(t.currentHighlight)
@@ -705,12 +696,10 @@ func (t *Table) ScrollToTrailing() {
 }
 
 func (t *Table) Tapped(e *fyne.PointEvent) {
-	// Только обработка клика вне области таблицы для сброса выделения
 	if e.Position.X < 0 || e.Position.X >= t.Size().Width || e.Position.Y < 0 || e.Position.Y >= t.Size().Height {
 		t.selectedCell = nil
 		t.Refresh()
 	}
-	// Не вызываем Select здесь — это уже сделано в MouseDown
 }
 
 // columnAt returns a positive integer (or 0) for the column that is found at the `pos` X position.
@@ -890,7 +879,6 @@ func (t *Table) rowAt(pos fyne.Position) int {
 }
 
 func (t *Table) tapped(pos fyne.Position, modifiers fyne.KeyModifier) {
-	// Обработка начала перетаскивания (ресайз колонок/строк)
 	if t.dragCol == noCellMatch && t.dragRow == noCellMatch {
 		t.dragStartPos = pos
 		if t.hoverHeaderRow != noCellMatch {
@@ -912,7 +900,6 @@ func (t *Table) tapped(pos fyne.Position, modifiers fyne.KeyModifier) {
 		}
 	}
 
-	// Если клик вне области таблицы, снимаем выделение
 	if pos.X < 0 || pos.X >= t.Size().Width || pos.Y < 0 || pos.Y >= t.Size().Height {
 		t.selectedCell = nil
 		t.Refresh()
@@ -928,20 +915,18 @@ func (t *Table) tapped(pos fyne.Position, modifiers fyne.KeyModifier) {
 		return
 	}
 
-	// Запрос фокуса
 	t.RefreshItem(t.currentHighlight)
 	if canvas := fyne.CurrentApp().Driver().CanvasForObject(t.super()); canvas != nil {
 		canvas.Focus(t.super().(fyne.Focusable))
 	}
 	t.RefreshItem(t.currentHighlight)
 
-	// Выбор ячейки с переданными модификаторами
 	t.Select(TableCellID{row, col}, modifiers)
 }
 
 func (t *Table) templateSize() fyne.Size {
 	if f := t.CreateCell; f != nil {
-		template := createItemAndApplyThemeScope(f, t) // don't use cache, we need new template
+		template := createItemAndApplyThemeScope(f, t)
 		if !t.ShowHeaderRow && !t.ShowHeaderColumn {
 			return template.MinSize()
 		}
@@ -1329,7 +1314,7 @@ func (c *tableCells) CreateRenderer() fyne.WidgetRenderer {
 
 func (c *tableCells) Resize(s fyne.Size) {
 	c.BaseWidget.Resize(s)
-	c.refreshForID(onlyNewTableCellsID) // trigger a redraw
+	c.refreshForID(onlyNewTableCellsID)
 }
 
 func (c *tableCells) refreshForID(id TableCellID) {
@@ -1420,11 +1405,11 @@ func (r *tableCellsRenderer) refreshForID(toDraw TableCellID) {
 		dataRows, dataCols = r.cells.t.Length()
 	}
 	visibleColWidths, offX, minCol, maxCol := r.cells.t.visibleColumnWidths(r.cells.t.cellSize.Width, dataCols)
-	if len(visibleColWidths) == 0 && dataCols > 0 { // we can't show anything until we have some dimensions
+	if len(visibleColWidths) == 0 && dataCols > 0 {
 		return
 	}
 	visibleRowHeights, offY, minRow, maxRow := r.cells.t.visibleRowHeights(r.cells.t.cellSize.Height, dataRows)
-	if len(visibleRowHeights) == 0 && dataRows > 0 { // we can't show anything until we have some dimensions
+	if len(visibleRowHeights) == 0 && dataRows > 0 {
 		return
 	}
 
@@ -1605,13 +1590,6 @@ func (r *tableCellsRenderer) moveIndicators() {
 		colDivs = 0
 	}
 	rowDivs := stickRows + maxRow - minRow - 1
-	if rowDivs < 0 {
-		rowDivs = 0
-	}
-
-	if colDivs < 0 {
-		colDivs = 0
-	}
 	if rowDivs < 0 {
 		rowDivs = 0
 	}
@@ -1894,23 +1872,30 @@ func (c *clip) Dragged(e *fyne.DragEvent) {
 }
 
 // updateMetrics recalculates internal metrics for RefreshRow.
+//
+// Must be called on the main goroutine (Fyne v2.6+ contract). The widget's
+// length callback and theme access are not goroutine-safe by themselves.
 func (t *Table) updateMetrics() {
-	t.propertyLock.Lock()
-	defer t.propertyLock.Unlock()
 	if t.Length != nil {
 		t.rowCount, t.colCount = t.Length()
 	}
 	t.rowHeight = t.cellSize.Height
 	padding := t.Theme().Size(theme.SizeNamePadding)
+	if t.rowHeight+padding <= 0 {
+		t.visibleRows = 0
+		return
+	}
 	t.visibleRows = int(math.Ceil(float64(t.Size().Height) / float64(t.rowHeight+padding)))
 }
 
-// RefreshRow refreshes the specified row without full table redraw.
+// RefreshRow refreshes the specified row without a full table redraw.
+//
+// Must be called on the main goroutine (Fyne v2.6+ contract). If you need to
+// refresh a row from a background goroutine, wrap the call in fyne.Do:
+//
+//	fyne.Do(func() { table.RefreshRow(id) })
 func (t *Table) RefreshRow(row int) {
-	t.propertyLock.RLock()
-	defer t.propertyLock.RUnlock()
-
-	if row < 0 || row >= t.rowCount {
+	if row < 0 || row >= t.rowCount || t.rowHeight <= 0 {
 		return
 	}
 
@@ -1921,15 +1906,16 @@ func (t *Table) RefreshRow(row int) {
 		return
 	}
 
-	// fmt.Println("RefreshRow called for row", row)
 	for col := 0; col < t.colCount; col++ {
 		t.RefreshItem(TableCellID{Row: row, Col: col})
 	}
 }
 
-// Refresh overrides BaseWidget.Refresh to ensure metrics are updated before redraw.
+// Refresh overrides BaseWidget.Refresh to ensure metrics are up to date
+// before the renderer performs its own refresh pass. This matters when the
+// renderer does not exist yet or when the data length has just changed.
 func (t *Table) Refresh() {
-	t.updateMetrics() // обновляем rowCount, colCount, visibleRows
+	t.updateMetrics()
 	t.BaseWidget.Refresh()
 }
 
@@ -1938,11 +1924,18 @@ func (t *Table) IsRowSelected(row int) bool {
 	return t.selectedRows[row]
 }
 
-// ClearSelection removes all selected rows.
+// ClearSelection removes all selected rows and refreshes the widget so the
+// selection marker disappears immediately.
 func (t *Table) ClearSelection() {
 	t.selectedRows = make(map[int]bool)
 	t.lastSelectedRow = -1
+	t.selectionAnchorRow = -1
 	t.selectedCell = nil
+
+	if t.moveCallback != nil {
+		t.moveCallback()
+	}
+	t.Refresh()
 }
 
 // DoubleTapped is called when a user double-clicks on a table cell.
@@ -1956,7 +1949,6 @@ func (t *Table) DoubleTapped(e *fyne.PointEvent) {
 		return
 	}
 	id := TableCellID{row, col}
-	// Одиночное выделение (сброс множественного)
 	t.Select(id, 0)
 	if f := t.OnDoubleTapped; f != nil {
 		f(id)

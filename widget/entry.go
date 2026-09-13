@@ -384,7 +384,6 @@ func (e *Entry) MinSize() fyne.Size {
 // MouseDown called on mouse click, this triggers a mouse click which can move the cursor,
 // update the existing selection (if shift is held), or start a selection dragging operation.
 func (e *Entry) MouseDown(m *desktop.MouseEvent) {
-	e.requestFocus()
 	e.syncSelectable()
 
 	if isTripleTap(e.sel.doubleTappedAtUnixMillis, time.Now().UnixMilli()) {
@@ -530,11 +529,9 @@ func (e *Entry) Append(text string) {
 	e.Refresh()
 }
 
-// Tapped is called when this entry has been tapped. We update the cursor position in
-// device-specific callbacks (MouseDown() and TouchDown()).
+// Tapped is called when this entry has been tapped.
+// Cursor positioning is handled by MouseDown for pointer events.
 func (e *Entry) Tapped(ev *fyne.PointEvent) {
-	// On desktop, tapping is handled by MouseDown. On mobile, we would handle selection,
-	// but since we remove mobile support, we do nothing here.
 }
 
 // TappedSecondary is called when right or alternative tap is invoked.

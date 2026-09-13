@@ -89,6 +89,9 @@ func (l *Lifecycle) OnStopped() func() {
 
 // DestroyEventQueue destroys the event queue.
 func (l *Lifecycle) DestroyEventQueue() {
+	if l.eventQueue == nil {
+		return
+	}
 	l.eventQueue.Close()
 }
 
@@ -107,6 +110,9 @@ func (l *Lifecycle) QueueEvent(fn func()) {
 // RunEventQueue runs the event queue. This should called inside a go routine.
 // This function blocks.
 func (l *Lifecycle) RunEventQueue(run func(func(), bool)) {
+	if l.eventQueue == nil {
+		return
+	}
 	for fn := range l.eventQueue.Out() {
 		run(fn, true)
 	}
@@ -114,6 +120,9 @@ func (l *Lifecycle) RunEventQueue(run func(func(), bool)) {
 
 // WaitForEvents wait for all the events.
 func (l *Lifecycle) WaitForEvents() {
+	if l.eventQueue == nil {
+		return
+	}
 	done := make(chan struct{})
 
 	l.eventQueue.In() <- func() { done <- struct{}{} }

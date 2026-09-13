@@ -1,5 +1,7 @@
 //go:build !wasm && !test_web_driver
 
+// xssyne/internal/driver/glfw/menu_notweb.go
+
 package glfw
 
 import (
@@ -8,27 +10,38 @@ import (
 )
 
 func addMissingQuitForMainMenu(menus *fyne.MainMenu, w *window) *fyne.MainMenu {
+	// Ищем первый не-сепараторный пункт верхнего меню.
+	var first *fyne.Menu
+	for _, m := range menus.Items {
+		if !m.IsSeparator {
+			first = m
+			break
+		}
+	}
+	if first == nil {
+		return menus
+	}
 	localQuit := lang.L("Quit")
 	var lastItem *fyne.MenuItem
-	if len(menus.Items[0].Items) > 0 {
-		lastItem = menus.Items[0].Items[len(menus.Items[0].Items)-1]
+	if len(first.Items) > 0 {
+		lastItem = first.Items[len(first.Items)-1]
 		if lastItem.Label == localQuit {
 			lastItem.IsQuit = true
 		}
 	}
-	if lastItem == nil || !lastItem.IsQuit { // make sure the first menu always has a quit option
+	if lastItem == nil || !lastItem.IsQuit {
 		quitItem := fyne.NewMenuItem(localQuit, nil)
 		quitItem.IsQuit = true
-		menus.Items[0].Items = append(menus.Items[0].Items, fyne.NewMenuItemSeparator(), quitItem)
+		first.Items = append(first.Items, fyne.NewMenuItemSeparator(), quitItem)
 	}
-	for _, item := range menus.Items[0].Items {
+	for _, item := range first.Items {
 		if item.IsQuit && item.Action == nil {
 			item.Action = func() {
 				for _, win := range w.driver.AllWindows() {
 					if glWin, ok := win.(*window); ok {
 						glWin.closed(glWin.view())
 					} else {
-						win.Close() // for test windows
+						win.Close()
 					}
 				}
 			}

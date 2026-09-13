@@ -1,3 +1,5 @@
+// xssyne/theme/color.go
+
 package theme
 
 import (
@@ -192,6 +194,31 @@ const (
 	//
 	// Since: 2.3
 	ColorNameWarning fyne.ThemeColorName = "warning"
+
+	// ColorNameMenuBorder is the name of theme lookup for menu border color.
+	//
+	// Since: xssyne
+	ColorNameMenuBorder fyne.ThemeColorName = "menuBorder"
+
+	// ColorNameMenuItemActiveBorder is the name of theme lookup for active menu item border.
+	//
+	// Since: xssyne
+	ColorNameMenuItemActiveBorder fyne.ThemeColorName = "menuItemActiveBorder"
+
+	// ColorNameMenuItemDanger is the name of theme lookup for danger menu item text.
+	//
+	// Since: xssyne
+	ColorNameMenuItemDanger fyne.ThemeColorName = "menuItemDanger"
+
+	// ColorNameMenuItemHeader is the name of theme lookup for menu item header text.
+	//
+	// Since: xssyne
+	ColorNameMenuItemHeader fyne.ThemeColorName = "menuItemHeader"
+
+	// ColorNameMenuItemHeaderBg is the name of theme lookup for menu item header background.
+	//
+	// Since: xssyne
+	ColorNameMenuItemHeaderBg fyne.ThemeColorName = "menuItemHeaderBg"
 )
 
 var (
