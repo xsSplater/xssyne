@@ -1,5 +1,7 @@
 //go:build !wasm
 
+// xssyne/app/preferences_nonweb.go
+
 package app
 
 import (

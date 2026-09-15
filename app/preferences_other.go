@@ -1,5 +1,7 @@
 //go:build !ios && !android && !mobile && !wasm
 
+// xssyne/app/preferences_other.go
+
 package app
 
 import (

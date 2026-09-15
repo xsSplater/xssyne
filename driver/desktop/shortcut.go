@@ -1,3 +1,5 @@
+// xssyne/driver/desktop/shortcut.go
+
 package desktop
 
 import (

@@ -1,5 +1,7 @@
 //go:build !ci && !wasm && !test_web_driver && !android && !ios && !mobile && (linux || openbsd || freebsd || netbsd) && !tinygo && !noos && !tamago
 
+// xssyne/app/app_xdg.go
+
 package app
 
 import (

@@ -1,5 +1,7 @@
 //go:build linux || freebsd || openbsd || netbsd
 
+// xssyne/internal/driver/glfw/driver_xdg.go
+
 package glfw
 
 import "C"

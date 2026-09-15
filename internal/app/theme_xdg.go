@@ -1,5 +1,7 @@
 //go:build !wasm && !test_web_driver && !android && !ios && !mobile && (linux || openbsd || freebsd || netbsd)
 
+// xssyne/internal/app/theme_xdg.go
+
 package app
 
 import (
@@ -8,7 +10,7 @@ import (
 	"fyne.io/fyne/v2"
 )
 
-// CurrentVariant contains the system’s theme variant.
+// CurrentVariant contains the system's theme variant.
 // It is intended for internal use, only!
 var CurrentVariant atomic.Uint64
 

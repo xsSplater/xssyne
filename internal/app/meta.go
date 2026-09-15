@@ -1,3 +1,5 @@
+// xssyne/internal/app/meta.go
+
 package app
 
 // these internal variables are set by the fyne build command so that the "FyneApp.toml" data is readable at runtime.

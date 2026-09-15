@@ -1,3 +1,5 @@
+// xssyne/internal/app/focus_manager.go
+
 package app
 
 import (

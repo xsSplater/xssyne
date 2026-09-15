@@ -1,3 +1,5 @@
+// xssyne/app/preferences.go
+
 package app
 
 import (

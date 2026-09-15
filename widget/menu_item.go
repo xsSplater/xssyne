@@ -1,4 +1,4 @@
-// xssyne/widget/menu.go
+// xssyne/widget/menu_item.go
 
 package widget
 
@@ -231,6 +231,7 @@ type menuItemRenderer struct {
 	checkIcon        *canvas.Image
 	expandIcon       *canvas.Image
 	icon             *canvas.Image
+	lastCheckVisible bool
 	lastThemePadding float32
 	minSize          fyne.Size
 	shortcutTexts    []*canvas.Text
@@ -245,17 +246,42 @@ func (r *menuItemRenderer) Layout(size fyne.Size) {
 	pad := th.Size(theme.SizeNamePadding)
 	inlineIcon := th.Size(theme.SizeNameInlineIcon)
 
-	leftOffset := innerPad + r.checkSpace()
+	// Галочка и обычная иконка делят ОДИН левый слот. Никакой
+	// резервации места под «колонку галочек» больше нет: если пункт
+	// без галочки — иконка стоит там же, где у пункта с галочкой
+	// стоит сама галочка.
+	leftOffset := innerPad
 	rightOffset := size.Width
 	iconSize := fyne.NewSquareSize(inlineIcon)
 	iconTopOffset := (size.Height - inlineIcon) / 2
 
+	// Галочка.
+	if r.checkIcon.Visible() {
+		r.checkIcon.Resize(iconSize)
+		r.checkIcon.Move(fyne.NewPos(leftOffset, iconTopOffset))
+		leftOffset += inlineIcon + innerPad
+	} else {
+		// Невидимую галочку отодвигаем за правую границу, чтобы не
+		// перехватывала клики.
+		r.checkIcon.Resize(iconSize)
+		r.checkIcon.Move(fyne.NewPos(size.Width, iconTopOffset))
+	}
+
+	// Основная иконка — после галочки.
+	if r.icon != nil {
+		r.icon.Resize(iconSize)
+		r.icon.Move(fyne.NewPos(leftOffset, iconTopOffset))
+		leftOffset += inlineIcon + innerPad
+	}
+
+	// Иконка разворачивания подменю — у правого края.
 	if r.expandIcon != nil {
 		rightOffset -= inlineIcon
 		r.expandIcon.Resize(iconSize)
 		r.expandIcon.Move(fyne.NewPos(rightOffset, iconTopOffset))
 	}
 
+	// Шорткаты — левее expand.
 	rightOffset -= innerPad
 	for i := len(r.shortcutTexts) - 1; i >= 0; i-- {
 		text := r.shortcutTexts[i]
@@ -267,19 +293,9 @@ func (r *menuItemRenderer) Layout(size fyne.Size) {
 		}
 	}
 
-	r.checkIcon.Resize(iconSize)
-	r.checkIcon.Move(fyne.NewPos(innerPad, iconTopOffset))
-
-	if r.icon != nil {
-		r.icon.Resize(iconSize)
-		r.icon.Move(fyne.NewPos(leftOffset, iconTopOffset))
-		leftOffset += inlineIcon + innerPad
-	}
-
 	textWidth := rightOffset - leftOffset
 
 	if r.subtext != nil {
-		// Две строки: основная сверху, подзаголовок снизу.
 		mainHeight := r.text.MinSize().Height
 		subHeight := r.subtext.MinSize().Height
 		totalHeight := mainHeight + subHeight
@@ -304,8 +320,6 @@ func (r *menuItemRenderer) Layout(size fyne.Size) {
 		if fyne.CurrentApp().Settings().ThemeVariant() == theme.VariantLight {
 			r.shadow.Hide()
 		} else {
-			// Синхронизируем метрику тени с основным текстом — иначе
-			// Bold-тень не совпадёт с regular-текстом и «двоит» буквы.
 			r.shadow.TextSize = r.text.TextSize
 			r.shadow.TextStyle = r.text.TextStyle
 			r.shadow.Resize(r.text.Size())
@@ -329,9 +343,14 @@ func (r *menuItemRenderer) MinSize() fyne.Size {
 	inlineIcon := th.Size(theme.SizeNameInlineIcon)
 	innerPad2 := innerPad * 2
 
-	minSize := r.text.MinSize().AddWidthHeight(innerPad2+r.checkSpace(), innerPad2)
+	minSize := r.text.MinSize().AddWidthHeight(innerPad2, innerPad2)
 	if r.subtext != nil {
 		minSize = minSize.AddWidthHeight(0, r.subtext.MinSize().Height)
+	}
+	// Галочка в левом слоте — тоже увеличивает минимальную ширину,
+	// если она показана. Но не резервируется, если не показана.
+	if r.checkIcon.Visible() {
+		minSize = minSize.AddWidthHeight(inlineIcon+innerPad, 0)
 	}
 	if r.expandIcon != nil {
 		minSize = minSize.AddWidthHeight(inlineIcon, 0)
@@ -348,6 +367,7 @@ func (r *menuItemRenderer) MinSize() fyne.Size {
 	}
 	r.minSize = minSize
 	r.lastThemePadding = innerPad
+	r.lastCheckVisible = r.checkIcon.Visible()
 	return r.minSize
 }
 
@@ -361,7 +381,6 @@ func (r *menuItemRenderer) updateVisuals() {
 
 	switch {
 	case r.i.Item.Header:
-		// Header — постоянный фон, без hover/active.
 		r.background.FillColor = th.Color(theme.ColorNameMenuItemHeaderBg, v)
 		r.background.Show()
 	case fyne.CurrentDevice().IsMobile():
@@ -397,8 +416,6 @@ func (r *menuItemRenderer) updateVisuals() {
 
 	// Кастомная иконка выбора: приоритет у CheckedIcon/UncheckedIcon
 	// из Item, если они заданы. Иначе — стандартная галочка Fyne.
-	// updateIcon сюда НЕ вызываем: он бы перезаписал кастомный ресурс
-	// значением из темы.
 	switch {
 	case r.i.Item.Checked && r.i.Item.CheckedIcon != nil:
 		r.checkIcon.Resource = r.i.Item.CheckedIcon
@@ -421,13 +438,6 @@ func (r *menuItemRenderer) Refresh() {
 	canvas.Refresh(r.i)
 }
 
-func (r *menuItemRenderer) checkSpace() float32 {
-	if r.i.parent.containsCheck {
-		return theme.IconInlineSize() + theme.InnerPadding()
-	}
-	return 0
-}
-
 func (r *menuItemRenderer) minSizeUnchanged() bool {
 	th := r.i.parent.Theme()
 
@@ -435,6 +445,7 @@ func (r *menuItemRenderer) minSizeUnchanged() bool {
 		r.text.TextSize == th.Size(theme.SizeNameText) &&
 		(r.expandIcon == nil || r.expandIcon.Size().Width == th.Size(theme.SizeNameInlineIcon)) &&
 		(r.subtext == nil || r.subtext.TextSize == th.Size(theme.SizeNameCaptionText)) &&
+		r.lastCheckVisible == r.checkIcon.Visible() &&
 		r.lastThemePadding == th.Size(theme.SizeNameInnerPadding)
 }
 
@@ -482,7 +493,6 @@ func shortcutColor(th fyne.Theme) color.Color {
 }
 
 func textsForShortcut(sc fyne.KeyboardShortcut, th fyne.Theme) (texts []*canvas.Text) {
-	// add modifier
 	b := strings.Builder{}
 	mods := sc.Mod()
 	if mods&fyne.KeyModifierControl != 0 {
@@ -503,7 +513,6 @@ func textsForShortcut(sc fyne.KeyboardShortcut, th fyne.Theme) (texts []*canvas.
 		t.TextStyle = styleModifiers
 		texts = append(texts, t)
 	}
-	// add key
 	style := defaultStyleKeys
 	s, ok := keyTexts[sc.Key()]
 	if !ok {

@@ -1,3 +1,5 @@
+// xssyne/driver/software/canvas.go
+
 package software
 
 import (

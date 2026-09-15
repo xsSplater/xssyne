@@ -1,5 +1,7 @@
 //go:build windows && mobile
 
+// xssyne/app/app_windows_stub.go
+
 package app
 
 import (

@@ -1,3 +1,5 @@
+// xssyne/driver/desktop/cursor.go
+
 package desktop
 
 import "image"

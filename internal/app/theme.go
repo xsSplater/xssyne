@@ -1,3 +1,5 @@
+// xssyne/internal/app/theme.go
+
 package app
 
 import (

@@ -1,5 +1,7 @@
 //go:build !ci && !android && !ios && !wasm && !test_web_driver && !noos && !tinygo
 
+// xssyne/internal/app/config_windows.go
+
 package app
 
 import (

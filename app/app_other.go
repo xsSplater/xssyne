@@ -1,5 +1,7 @@
 //go:build ci || (!ios && !android && !linux && !darwin && !windows && !freebsd && !openbsd && !netbsd && !wasm && !test_web_driver) || tamago || noos || tinygo
 
+// xssyne/app/app_other.go
+
 package app
 
 import (

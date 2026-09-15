@@ -1,3 +1,5 @@
+// xssyne/driver/desktop/window.go
+
 package desktop
 
 // Window describes desktop specific window features

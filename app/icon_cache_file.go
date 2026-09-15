@@ -1,3 +1,5 @@
+// xssyne/app/icon_cache_file.go
+
 package app
 
 import (

@@ -1,5 +1,7 @@
 //go:build !wasm && !test_web_driver && !tamago && !noos && !tinygo
 
+// xssyne/app/settings_file.go
+
 package app
 
 import (

@@ -1,3 +1,5 @@
+// xssyne/driver/desktop/canvas.go
+
 package desktop
 
 import "fyne.io/fyne/v2"

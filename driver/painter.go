@@ -1,3 +1,5 @@
+// xssyne/driver/painter.go
+
 package driver
 
 import (

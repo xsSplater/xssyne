@@ -34,7 +34,7 @@ func NewMenuBar(mainMenu *fyne.MainMenu, canvas fyne.Canvas) *MenuBar {
 			b.Items = append(b.Items, sep)
 			continue
 		}
-		barItem := &menuBarItem{Menu: menu, Parent: b}
+		barItem := &menuBarItem{Menu: menu, Parent: b, rightAlign: menu.RightAlign}
 		barItem.ExtendBaseWidget(barItem)
 		b.Items = append(b.Items, barItem)
 	}
@@ -172,11 +172,50 @@ func (r *menuBarRenderer) Layout(size fyne.Size) {
 		r.underlay.Resize(fyne.NewSize(0, 0))
 	}
 	innerPadding := theme.InnerPadding()
-	r.cont.Resize(fyne.NewSize(size.Width-2*innerPadding, size.Height))
+	contentWidth := size.Width - 2*innerPadding
+	r.cont.Resize(fyne.NewSize(contentWidth, size.Height))
 	r.cont.Move(fyne.NewPos(innerPadding, 0))
 
+	// Определяем, какие items прижимаются к правому краю.
+	// Для menuBarItem — берём флаг из самого элемента; для
+	// menuBarSeparator — наследуем от следующего не-сепараторного
+	// элемента (чтобы разделитель отделял левую группу от правой).
+	rightFlags := make([]bool, len(r.b.Items))
+	nextRight := false
+	for i := len(r.b.Items) - 1; i >= 0; i-- {
+		if bi, ok := r.b.Items[i].(*menuBarItem); ok {
+			nextRight = bi.rightAlign
+			rightFlags[i] = bi.rightAlign
+		} else {
+			rightFlags[i] = nextRight
+		}
+	}
+
+	var rightWidth float32
+	for i, item := range r.b.Items {
+		if rightFlags[i] {
+			rightWidth += item.MinSize().Width
+		}
+	}
+
+	// Левая группа — от левого края.
 	x := float32(0)
-	for _, item := range r.b.Items {
+	for i, item := range r.b.Items {
+		if rightFlags[i] {
+			continue
+		}
+		min := item.MinSize()
+		item.Resize(fyne.NewSize(min.Width, size.Height))
+		item.Move(fyne.NewPos(x, 0))
+		x += min.Width
+	}
+
+	// Правая группа — от правого края.
+	x = contentWidth - rightWidth
+	for i, item := range r.b.Items {
+		if !rightFlags[i] {
+			continue
+		}
 		min := item.MinSize()
 		item.Resize(fyne.NewSize(min.Width, size.Height))
 		item.Move(fyne.NewPos(x, 0))
@@ -187,7 +226,20 @@ func (r *menuBarRenderer) Layout(size fyne.Size) {
 		if item.Child().Size().IsZero() {
 			item.Child().Resize(item.Child().MinSize())
 		}
-		item.Child().Move(fyne.NewPos(item.Position().X+innerPadding, item.Size().Height))
+		childWidth := item.Child().Size().Width
+		menuX := item.Position().X + innerPadding
+		// Если подменю вылезает за правый край полосы — прижимаем
+		// его к правому краю: сдвигаем влево так, чтобы правый край
+		// подменю совпал с правым краем пункта меню. Если даже
+		// этого не хватает (подменю шире, чем позволяет место),
+		// ставим его в 0 — левый край.
+		if menuX+childWidth > size.Width {
+			menuX = item.Position().X + item.Size().Width - childWidth
+			if menuX < 0 {
+				menuX = 0
+			}
+		}
+		item.Child().Move(fyne.NewPos(menuX, item.Size().Height))
 	}
 
 	r.background.Move(fyne.NewPos(0, 0))

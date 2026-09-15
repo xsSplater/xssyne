@@ -1,5 +1,7 @@
 //go:build !wasm && !test_web_driver
 
+// xssyne/internal/driver/glfw/driver_desktop.go
+
 package glfw
 
 import (

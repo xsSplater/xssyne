@@ -28,6 +28,10 @@ type menuBarItem struct {
 	active  bool
 	child   *publicWidget.Menu
 	hovered bool
+
+	// rightAlign — прижат ли пункт к правому краю полосы.
+	// Значение берётся из Menu.RightAlign при создании в NewMenuBar.
+	rightAlign bool
 }
 
 func (i *menuBarItem) Child() *publicWidget.Menu {

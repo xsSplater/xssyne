@@ -1,3 +1,5 @@
+// xssyne/app/meta.go
+
 package app
 
 import (

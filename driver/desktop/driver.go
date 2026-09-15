@@ -1,3 +1,5 @@
+// xssyne/driver/desktop/driver.go
+
 // Package desktop provides desktop specific driver functionality.
 package desktop
 

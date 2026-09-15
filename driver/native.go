@@ -1,3 +1,5 @@
+// xssyne/driver/native.go
+
 package driver
 
 // NativeWindow is an extension interface for `fyne.Window` that gives access

@@ -1,3 +1,5 @@
+// xssyne/internal/app/lifecycle.go
+
 package app
 
 import (

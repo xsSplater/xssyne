@@ -1,3 +1,5 @@
+// xssyne/driver/desktop/app.go
+
 package desktop
 
 import "fyne.io/fyne/v2"

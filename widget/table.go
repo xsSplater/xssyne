@@ -1,3 +1,5 @@
+// xssyne/widget/table.go
+
 package widget
 
 import (

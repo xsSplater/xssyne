@@ -1,5 +1,7 @@
 //go:build !windows
 
+// xssyne/internal/driver/glfw/driver_notwindows.go
+
 package glfw
 
 func isDark() bool {

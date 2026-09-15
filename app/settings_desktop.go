@@ -1,5 +1,7 @@
 //go:build !android && !ios && !mobile && !wasm && !test_web_driver && !tamago && !noos && !tinygo
 
+// xssyne/app/settings_desktop.go
+
 package app
 
 import (
