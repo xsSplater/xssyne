@@ -1,3 +1,5 @@
+// xssyne/internal/driver/glfw/window.go
+
 package glfw
 
 import (
@@ -886,10 +888,26 @@ func (w *window) triggersShortcut(localizedKeyName fyne.KeyName, key fyne.KeyNam
 		}
 	}
 
-	if shortcut == nil && modifier != 0 && !isKeyModifier(keyName) && modifier != fyne.KeyModifierShift {
-		shortcut = &desktop.CustomShortcut{
-			KeyName:  keyName,
-			Modifier: modifier,
+	if shortcut == nil && !isKeyModifier(keyName) {
+		withModifier := modifier != 0 && modifier != fyne.KeyModifierShift
+		plainAllowed := modifier == 0 && isUnmodifiedShortcutKey(keyName)
+		if withModifier || plainAllowed {
+			shortcut = &desktop.CustomShortcut{
+				KeyName:  keyName,
+				Modifier: modifier,
+			}
+		}
+	}
+
+	// Custom shortcuts, зарегистрированные напрямую на canvas, имеют
+	// приоритет над focused widget. Это позволяет F-клавишам работать
+	// при фокусе в Entry, при этом встроенные Ctrl+C/V/X/A/Z/Y остаются
+	// за виджетом (они приходят сюда не как CustomShortcut, а как
+	// ShortcutCopy/ShortcutPaste/…/ShortcutSelectAll).
+	if _, isCustom := shortcut.(*desktop.CustomShortcut); isCustom {
+		if w.canvas.HasShortcut(shortcut) {
+			w.canvas.TypedShortcut(shortcut)
+			return true
 		}
 	}
 
@@ -1081,4 +1099,16 @@ func isKeyModifier(keyName fyne.KeyName) bool {
 		keyName == desktop.KeyControlLeft || keyName == desktop.KeyControlRight ||
 		keyName == desktop.KeyAltLeft || keyName == desktop.KeyAltRight ||
 		keyName == desktop.KeySuperLeft || keyName == desktop.KeySuperRight
+}
+
+// isUnmodifiedShortcutKey сообщает, можно ли биндить эту клавишу без модификатора. Белый список, а не «всё без Ctrl/Alt/Super»: буквы, цифры и знаки должны доходить до TypedRune, иначе сломается ввод текста в Entry. Клавиши из списка гарантированно не порождают руну.
+func isUnmodifiedShortcutKey(k fyne.KeyName) bool {
+	switch k {
+	case fyne.KeyF1, fyne.KeyF2, fyne.KeyF3, fyne.KeyF4,
+		fyne.KeyF5, fyne.KeyF6, fyne.KeyF7, fyne.KeyF8,
+		fyne.KeyF9, fyne.KeyF10, fyne.KeyF11, fyne.KeyF12,
+		fyne.KeyDelete, fyne.KeyInsert:
+		return true
+	}
+	return false
 }

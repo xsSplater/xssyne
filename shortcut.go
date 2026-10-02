@@ -1,3 +1,5 @@
+// xssyne/shortcut.go
+
 package fyne
 
 import "sync"
@@ -181,4 +183,13 @@ func (se *ShortcutRedo) Mod() KeyModifier {
 // ShortcutName returns the shortcut name
 func (se *ShortcutRedo) ShortcutName() string {
 	return "Redo"
+}
+
+// HasShortcut reports whether a handler is registered for the given shortcut.
+func (sh *ShortcutHandler) HasShortcut(shortcut Shortcut) bool {
+	if sh == nil || shortcut == nil {
+		return false
+	}
+	_, ok := sh.entry.Load(shortcut.ShortcutName())
+	return ok
 }

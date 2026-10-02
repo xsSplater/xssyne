@@ -1,3 +1,5 @@
+// xssyne/dialog/file.go
+
 package dialog
 
 import (

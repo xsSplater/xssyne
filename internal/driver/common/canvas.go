@@ -1,3 +1,5 @@
+// xssyne/internal/driver/common/canvas.go
+
 package common
 
 import (
@@ -480,4 +482,12 @@ func (c *Canvas) updateLayout(objToLayout fyne.CanvasObject) {
 		renderer := cache.Renderer(cont)
 		renderer.Layout(cont.Size())
 	}
+}
+
+// HasShortcut reports whether the canvas has a handler for the given shortcut.
+func (c *Canvas) HasShortcut(sh fyne.Shortcut) bool {
+	if sh == nil {
+		return false
+	}
+	return c.shortcut.HasShortcut(sh)
 }

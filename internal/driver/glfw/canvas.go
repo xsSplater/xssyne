@@ -1,3 +1,5 @@
+// xssyne/internal/driver/glfw/canvas.go
+
 package glfw
 
 import (

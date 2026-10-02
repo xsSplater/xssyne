@@ -1,3 +1,5 @@
+// xssyne/lang/lang.go
+
 // Package lang introduces a translation and localisation API for Fyne applications.
 //
 // Translation bundles are JSON files in the format used by
