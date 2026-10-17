@@ -1,3 +1,5 @@
+// xssyne/widget/hyperlink.go
+
 package widget
 
 import (

@@ -1,3 +1,5 @@
+// xssyne/resource.go
+
 package fyne
 
 import (

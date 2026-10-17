@@ -1,11 +1,15 @@
+// xssyne/canvas/image.go
+
 package canvas
 
 import (
 	"bytes"
 	"errors"
 	"image"
-	_ "image/jpeg" // avoid users having to import when using image widget
-	_ "image/png"  // avoid the same for PNG images
+
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,6 +19,11 @@ import (
 	"fyne.io/fyne/v2/internal/scale"
 	"fyne.io/fyne/v2/internal/svg"
 	"fyne.io/fyne/v2/storage"
+
+	"github.com/slackhq/deanimator"
+	_ "github.com/slackhq/deanimator/webp" // регистрирует WebP-деаниматор
+
+	_ "golang.org/x/image/webp" // быстрый путь для простых VP8/VP8L
 )
 
 // ImageFill defines the different type of ways an image can stretch to fill its space.
@@ -179,7 +188,17 @@ func (i *Image) Refresh() {
 				return
 			}
 
-			img, _, err := image.Decode(rc)
+			// Буферизуем поток целиком: image.Decode может частично
+			// прочитать rc и сдаться (например, x/image/webp на VP8X),
+			// а мы хотим иметь возможность повторить попытку другим
+			// декодером с нуля.
+			raw, err := io.ReadAll(rc)
+			if err != nil {
+				fyne.LogError("Failed to read image data", err)
+				return
+			}
+
+			img, err := decodeImage(raw)
 			if err != nil {
 				fyne.LogError("Failed to render image", err)
 				return
@@ -406,4 +425,32 @@ func (i *Image) renderSVG(width, height float32) (image.Image, error) {
 	}
 	cache.SetSvg(i.name(), i, tex, screenWidth, screenHeight)
 	return tex, nil
+}
+
+// decodeImage пытается декодировать картинку несколькими декодерами.
+//
+//  1. image.Decode — быстрый путь для PNG/JPEG/GIF/VP8/VP8L.
+//  2. nativewebp.Decode — fallback для VP8X (расширенный контейнер,
+//     альфа-канал, ICC-профиль), который x/image/webp не умеет.
+//
+// Формат определяется по содержимому, а не по расширению файла —
+// Nexus отдаёт .gif-URL с WebP-содержимым, и наоборот.
+func decodeImage(data []byte) (image.Image, error) {
+	// 1. Быстрый путь для PNG/JPEG/GIF/простого WebP.
+	if img, _, err := image.Decode(bytes.NewReader(data)); err == nil {
+		return img, nil
+	}
+
+	// 2. deanImator: если это анимированный WebP/GIF — вернёт только
+	//    первый кадр, возможно в другом формате (например, GIF→PNG).
+	var buf bytes.Buffer
+	if _, err := deanimator.RenderFirstFrame(bytes.NewReader(data), &buf); err == nil {
+		if img, _, err := image.Decode(&buf); err == nil {
+			return img, nil
+		}
+	}
+
+	// 3. Fallback — вернём ошибку исходного декодера.
+	img, _, err := image.Decode(bytes.NewReader(data))
+	return img, err
 }
