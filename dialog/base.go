@@ -1,3 +1,5 @@
+// xssyne/dialog/base.go
+
 // Package dialog defines standard dialog windows for application GUIs.
 package dialog // import "fyne.io/fyne/v2/dialog"
 
@@ -54,6 +56,7 @@ type dialog struct {
 
 	// allows derived dialogs to inject logic that runs before Show()
 	beforeShowHook func()
+	focusOnShow    fyne.Focusable
 }
 
 func (d *dialog) Dismiss() {
@@ -86,6 +89,10 @@ func (d *dialog) Show() {
 		d.win.Resize(d.desiredSize)
 	}
 	d.win.Show()
+
+	if d.focusOnShow != nil && d.parent != nil && d.parent.Canvas() != nil {
+		d.parent.Canvas().Focus(d.focusOnShow)
+	}
 }
 
 func (d *dialog) Refresh() {

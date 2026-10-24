@@ -1,3 +1,5 @@
+// xssyne/dialog/confirm.go
+
 package dialog
 
 import (
@@ -53,6 +55,8 @@ func NewConfirm(title, message string, callback func(bool), parent fyne.Window) 
 		},
 	}
 	d.create(container.NewGridWithColumns(2, d.dismiss, confirm))
+
+	d.focusOnShow = confirm
 
 	return &ConfirmDialog{dialog: d, confirm: confirm}
 }

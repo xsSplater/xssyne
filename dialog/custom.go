@@ -1,3 +1,5 @@
+// xssyne/dialog/custom.go
+
 package dialog
 
 import (
@@ -92,6 +94,15 @@ func NewCustomConfirm(title, confirm, dismiss string, content fyne.CanvasObject,
 		},
 	}
 	d.create(container.NewGridWithColumns(2, d.dismiss, ok))
+
+	// Устанавливаем фокус на кнопку OK при открытии
+	d.beforeShowHook = func() {
+		if parent != nil && parent.Canvas() != nil {
+			parent.Canvas().Focus(ok)
+		}
+	}
+
+	d.focusOnShow = ok
 
 	return &ConfirmDialog{dialog: d, confirm: ok}
 }

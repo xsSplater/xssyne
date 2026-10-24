@@ -1,3 +1,5 @@
+// xssyne/widget/button.go
+
 package widget
 
 import (
@@ -221,7 +223,8 @@ func (b *Button) TypedRune(rune) {
 
 // TypedKey is a hook called by the input handling logic on key events if this object is focused.
 func (b *Button) TypedKey(ev *fyne.KeyEvent) {
-	if ev.Name == fyne.KeySpace {
+	// Добавлена обработка Enter и Return (для Numpad Enter)
+	if ev.Name == fyne.KeySpace || ev.Name == fyne.KeyEnter || ev.Name == fyne.KeyReturn {
 		b.Tapped(nil)
 	}
 }

@@ -152,7 +152,7 @@ func (c *Canvas) EnsureMinSize() bool {
 // Focus makes the provided item focused.
 func (c *Canvas) Focus(obj fyne.Focusable) {
 	focusMgr := c.focusManager()
-	if focusMgr != nil && focusMgr.Focus(obj) { // fast path – probably >99.9% of all cases
+	if focusMgr != nil && focusMgr.Focus(obj) { // fast path - probably >99.9% of all cases
 		if c.OnFocus != nil {
 			c.OnFocus(obj)
 		}
@@ -173,7 +173,7 @@ func (c *Canvas) Focus(obj fyne.Focusable) {
 		}
 	}
 
-	fyne.LogError("Failed to focus object which is not part of the canvas’ content, menu or overlays.", nil)
+	fyne.LogError("Failed to focus object which is not part of the canvas' content, menu or overlays.", nil)
 }
 
 // Focused returns the current focused object.
