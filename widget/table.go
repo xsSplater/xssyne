@@ -1901,7 +1901,8 @@ func (t *Table) RefreshRow(row int) {
 		return
 	}
 
-	firstRow := int(t.offset.Y / t.rowHeight)
+	padding := t.Theme().Size(theme.SizeNamePadding)
+	firstRow := int(t.offset.Y / (t.rowHeight + padding))
 	lastRow := firstRow + t.visibleRows
 
 	if row < firstRow || row > lastRow {

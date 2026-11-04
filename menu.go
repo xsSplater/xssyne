@@ -61,7 +61,13 @@ func NewMenuSeparator() *Menu {
 //
 // Since: 2.2
 func (m *Menu) Refresh() {
-	for _, w := range CurrentApp().Driver().AllWindows() {
+	app := CurrentApp()
+	if app == nil || app.Driver() == nil {
+		return
+	}
+	d := app.Driver()
+
+	for _, w := range d.AllWindows() {
 		main := w.MainMenu()
 		if main != nil {
 			for _, menu := range main.Items {
@@ -73,9 +79,9 @@ func (m *Menu) Refresh() {
 		}
 	}
 
-	if d, ok := CurrentApp().Driver().(systemTrayDriver); ok {
-		if m == d.SystemTrayMenu() {
-			d.SetSystemTrayMenu(m)
+	if tray, ok := d.(systemTrayDriver); ok {
+		if m == tray.SystemTrayMenu() {
+			tray.SetSystemTrayMenu(m)
 		}
 	}
 }
@@ -158,11 +164,16 @@ func NewMainMenu(items ...*Menu) *MainMenu {
 	return &MainMenu{Items: items}
 }
 
-// Refresh will instruct any rendered menus using this struct to update their display.
+// Refresh will instruct any rendered menus using this struct to update its display.
 //
 // Since: 2.2
 func (m *MainMenu) Refresh() {
-	for _, w := range CurrentApp().Driver().AllWindows() {
+	app := CurrentApp()
+	if app == nil || app.Driver() == nil {
+		return
+	}
+
+	for _, w := range app.Driver().AllWindows() {
 		menu := w.MainMenu()
 		if menu != nil && menu == m {
 			w.SetMainMenu(m)

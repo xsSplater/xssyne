@@ -1,3 +1,5 @@
+// xssyne/richtext_objects.go
+
 package widget
 
 import (
@@ -522,8 +524,14 @@ func (c *CheckBoxSegment) Visual() fyne.CanvasObject {
 	return &fyne.Container{Layout: &unpadTextWidgetLayout{parent: check}, Objects: []fyne.CanvasObject{check}}
 }
 
-// Update doesn't need to change a checkbox
-func (c *CheckBoxSegment) Update(fyne.CanvasObject) {
+func (c *CheckBoxSegment) Update(o fyne.CanvasObject) {
+	if cont, ok := o.(*fyne.Container); ok && len(cont.Objects) > 0 {
+		if check, ok := cont.Objects[0].(*Check); ok {
+			if check.Checked != c.Checked {
+				check.SetChecked(c.Checked)
+			}
+		}
+	}
 }
 
 // Select does nothing for a checkbox.

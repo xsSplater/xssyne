@@ -24,11 +24,6 @@ const (
 	//
 	// Since: 2.0
 	VariantLight = internaltheme.VariantLight
-
-	// Верхнее меню
-	ColorNameMenuBarAccent   = "menuBarAccent"   // полоска под активным + цвет текста активного
-	ColorNameMenuBarActiveBg = "menuBarActiveBg" // фон активного пункта
-	ColorNameMenuBarHoverBg  = "menuBarHoverBg"  // фон при наведении
 )
 
 var defaultTheme, systemTheme fyne.Theme

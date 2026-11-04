@@ -3,6 +3,7 @@
 package fyne
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -108,24 +109,26 @@ func CacheResourceFromURLString(urlStr string) (Resource, error) {
 		return nil, err
 	}
 
-	// Был цикл записи в CacheResourceFromURLString
 	write, err := cache.Write(urlStr)
 	if err != nil {
 		return res, err
 	}
-	defer write.Close()
-	// 	Если write.Close() возвращает ошибку, нужно сделать:
-	// defer func() {
-	//     if cerr := write.Close(); cerr != nil && err == nil {
-	//         err = cerr
-	//     }
-	// }()
+	defer func() {
+		if cerr := write.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	data := res.Content()
 	for {
-		n, err := write.Write(data)
-		if err != nil {
-			return res, err
+		n, werr := write.Write(data)
+		if werr != nil {
+			return res, werr
+		}
+		if n == 0 {
+			// Writer нарушил контракт: не записал ничего, но и ошибки не вернул.
+			// Без этой проверки получим бесконечный цикл.
+			return res, fmt.Errorf("cache write returned 0 bytes without error")
 		}
 		if n >= len(data) {
 			break
@@ -133,5 +136,5 @@ func CacheResourceFromURLString(urlStr string) (Resource, error) {
 		data = data[n:]
 	}
 
-	return res, nil
+	return res, err
 }

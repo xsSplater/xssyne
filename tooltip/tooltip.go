@@ -65,7 +65,7 @@ func (m *Manager) SetStyle(s Style) {
 func (m *Manager) Show(w fyne.Widget, text string, pos fyne.Position) {
 	m.mu.Lock()
 	if m.current == w && m.popUp != nil && m.popUp.Visible() {
-		m.popUp.Move(pos.Add(fyne.NewPos(10, 10)))
+		m.popUp.Move(pos.Add(fyne.NewPos(20, 15)))
 		m.mu.Unlock()
 		return
 	}
@@ -106,12 +106,16 @@ func (m *Manager) showPopUp(text string, pos fyne.Position) {
 	label.Wrapping = fyne.TextWrapWord
 	label.TextStyle = fyne.TextStyle{Bold: m.style.FontBold}
 
-	// Устанавливаем ширину Label, чтобы он мог рассчитать высоту
+	// Ограничиваем ширину: сначала даём maxWidth для переноса, потом
+	// смотрим реальную ширину после wrap и сжимаем до неё.
 	label.Resize(fyne.NewSize(maxWidth, label.MinSize().Height))
 	labelSize := label.MinSize()
 
-	// Вычисляем размеры контента
-	width := maxWidth + 2*padding
+	// Короткий текст не должен растягиваться на весь maxWidth.
+	width := labelSize.Width + 2*padding
+	if width > maxWidth+2*padding {
+		width = maxWidth + 2*padding
+	}
 	height := labelSize.Height + 2*padding
 
 	// Фон

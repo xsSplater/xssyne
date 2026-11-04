@@ -1,3 +1,5 @@
+// xssyne/richtext.go
+
 package widget
 
 import (
@@ -414,7 +416,8 @@ func (t *RichText) updateRowBounds() {
 			if parent, ok := seg.(RichTextBlock); ok {
 				segs := parent.Segments()
 				iterateSegments(segs, depth+1)
-				if len(segs) > 0 && !segs[len(segs)-1].Inline() {
+				// Не сбрасываем строку при TextWrapOff
+				if len(segs) > 0 && !segs[len(segs)-1].Inline() && t.Wrapping != fyne.TextWrapOff {
 					wrapWidth = maxWidth
 					currentBound = nil
 					currentBoundDepth = depth
@@ -468,8 +471,16 @@ func (t *RichText) updateRowBounds() {
 			boundWasNil := currentBound == nil
 			if currentBound != nil {
 				if len(retBounds) > 0 {
-					bounds[len(bounds)-1].end = retBounds[0].end // invalidate row ending as we have more content
-					bounds[len(bounds)-1].segments = append(bounds[len(bounds)-1].segments, seg)
+					firstBound := retBounds[0]
+					if firstBound.begin == firstBound.end && firstBound.ellipsis {
+						bounds[len(bounds)-1].ellipsis = true
+					} else {
+						bounds[len(bounds)-1].end = firstBound.end
+						bounds[len(bounds)-1].segments = append(bounds[len(bounds)-1].segments, seg)
+						if firstBound.ellipsis {
+							bounds[len(bounds)-1].ellipsis = true
+						}
+					}
 					if depth > currentBoundDepth {
 						if rowContinuationIndent == -1 {
 							rowContinuationIndent = maxWidth - wrapWidth
@@ -486,7 +497,6 @@ func (t *RichText) updateRowBounds() {
 						}
 					}
 					bounds = append(bounds, retBounds[1:]...)
-
 					fitSize.Height -= height
 				}
 			} else {
@@ -499,7 +509,9 @@ func (t *RichText) updateRowBounds() {
 				currentBoundDepth = depth
 				rowContinuationIndent = -1
 			}
-			if seg.Inline() {
+			// Принудительно считаем инлайновым при TextWrapOff
+			isInline := seg.Inline() || t.Wrapping == fyne.TextWrapOff
+			if isInline {
 				last := bounds[len(bounds)-1]
 				begin := 0
 				if len(last.segments) == 1 {

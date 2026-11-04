@@ -219,6 +219,11 @@ const (
 	//
 	// Since: xssyne
 	ColorNameMenuItemHeaderBg fyne.ThemeColorName = "menuItemHeaderBg"
+
+	// Верхнее меню
+	ColorNameMenuBarAccent   fyne.ThemeColorName = "menuBarAccent"   // полоска под активным + цвет текста активного
+	ColorNameMenuBarActiveBg fyne.ThemeColorName = "menuBarActiveBg" // фон активного пункта
+	ColorNameMenuBarHoverBg  fyne.ThemeColorName = "menuBarHoverBg"  // фон при наведении
 )
 
 var (

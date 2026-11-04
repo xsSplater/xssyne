@@ -550,7 +550,7 @@ func (f formItemLayout) Layout(objs []fyne.CanvasObject, size fyne.Size) {
 	objs[0].Resize(fyne.NewSize(size.Width, itemHeight))
 
 	objs[1].Move(fyne.NewPos(innerPad, itemHeight+innerPad/2))
-	objs[1].Resize(fyne.NewSize(size.Width, objs[1].MinSize().Width))
+	objs[1].Resize(fyne.NewSize(size.Width, objs[1].MinSize().Height))
 }
 
 func (f formItemLayout) MinSize(objs []fyne.CanvasObject) fyne.Size {

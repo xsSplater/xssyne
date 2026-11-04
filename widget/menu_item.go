@@ -232,6 +232,8 @@ type menuItemRenderer struct {
 	expandIcon       *canvas.Image
 	icon             *canvas.Image
 	lastCheckVisible bool
+	lastHadIcon      bool
+	lastHadSubtitle  bool
 	lastThemePadding float32
 	minSize          fyne.Size
 	shortcutTexts    []*canvas.Text
@@ -333,44 +335,6 @@ func (r *menuItemRenderer) Layout(size fyne.Size) {
 	}
 }
 
-func (r *menuItemRenderer) MinSize() fyne.Size {
-	if r.minSizeUnchanged() {
-		return r.minSize
-	}
-
-	th := r.i.parent.Theme()
-	innerPad := th.Size(theme.SizeNameInnerPadding)
-	inlineIcon := th.Size(theme.SizeNameInlineIcon)
-	innerPad2 := innerPad * 2
-
-	minSize := r.text.MinSize().AddWidthHeight(innerPad2, innerPad2)
-	if r.subtext != nil {
-		minSize = minSize.AddWidthHeight(0, r.subtext.MinSize().Height)
-	}
-	// Галочка в левом слоте — тоже увеличивает минимальную ширину,
-	// если она показана. Но не резервируется, если не показана.
-	if r.checkIcon.Visible() {
-		minSize = minSize.AddWidthHeight(inlineIcon+innerPad, 0)
-	}
-	if r.expandIcon != nil {
-		minSize = minSize.AddWidthHeight(inlineIcon, 0)
-	}
-	if r.icon != nil {
-		minSize = minSize.AddWidthHeight(inlineIcon+innerPad, 0)
-	}
-	if r.shortcutTexts != nil {
-		var textWidth float32
-		for _, text := range r.shortcutTexts {
-			textWidth += text.MinSize().Width
-		}
-		minSize = minSize.AddWidthHeight(textWidth+innerPad, 0)
-	}
-	r.minSize = minSize
-	r.lastThemePadding = innerPad
-	r.lastCheckVisible = r.checkIcon.Visible()
-	return r.minSize
-}
-
 func (r *menuItemRenderer) updateVisuals() {
 	th := r.i.parent.Theme()
 	v := fyne.CurrentApp().Settings().ThemeVariant()
@@ -438,15 +402,58 @@ func (r *menuItemRenderer) Refresh() {
 	canvas.Refresh(r.i)
 }
 
+func (r *menuItemRenderer) MinSize() fyne.Size {
+	if r.minSizeUnchanged() {
+		return r.minSize
+	}
+
+	th := r.i.parent.Theme()
+	innerPad := th.Size(theme.SizeNameInnerPadding)
+	inlineIcon := th.Size(theme.SizeNameInlineIcon)
+	innerPad2 := innerPad * 2
+
+	minSize := r.text.MinSize().AddWidthHeight(innerPad2, innerPad2)
+	if r.subtext != nil {
+		minSize = minSize.AddWidthHeight(0, r.subtext.MinSize().Height)
+	}
+	if r.checkIcon.Visible() {
+		minSize = minSize.AddWidthHeight(inlineIcon+innerPad, 0)
+	}
+	if r.expandIcon != nil {
+		minSize = minSize.AddWidthHeight(inlineIcon, 0)
+	}
+	if r.icon != nil {
+		minSize = minSize.AddWidthHeight(inlineIcon+innerPad, 0)
+	}
+	if r.shortcutTexts != nil {
+		var textWidth float32
+		for _, text := range r.shortcutTexts {
+			textWidth += text.MinSize().Width
+		}
+		minSize = minSize.AddWidthHeight(textWidth+innerPad, 0)
+	}
+	r.minSize = minSize
+	r.lastThemePadding = innerPad
+	r.lastCheckVisible = r.checkIcon.Visible()
+	r.lastHadIcon = r.i.Item.Icon != nil
+	r.lastHadSubtitle = r.i.Item.Subtitle != ""
+	return r.minSize
+}
+
 func (r *menuItemRenderer) minSizeUnchanged() bool {
 	th := r.i.parent.Theme()
+
+	hasIcon := r.i.Item.Icon != nil
+	hasSubtitle := r.i.Item.Subtitle != ""
 
 	return !r.minSize.IsZero() &&
 		r.text.TextSize == th.Size(theme.SizeNameText) &&
 		(r.expandIcon == nil || r.expandIcon.Size().Width == th.Size(theme.SizeNameInlineIcon)) &&
 		(r.subtext == nil || r.subtext.TextSize == th.Size(theme.SizeNameCaptionText)) &&
 		r.lastCheckVisible == r.checkIcon.Visible() &&
-		r.lastThemePadding == th.Size(theme.SizeNameInnerPadding)
+		r.lastThemePadding == th.Size(theme.SizeNameInnerPadding) &&
+		r.lastHadIcon == hasIcon &&
+		r.lastHadSubtitle == hasSubtitle
 }
 
 func (r *menuItemRenderer) updateIcon(img *canvas.Image, rsc fyne.Resource) {
