@@ -1,3 +1,5 @@
+// xssyne/svg.go
+
 package svg
 
 import (
@@ -111,6 +113,10 @@ func IsFileSVG(path string) bool {
 
 // IsResourceSVG checks if the resource is an SVG or not.
 func IsResourceSVG(res fyne.Resource) bool {
+	if res == nil {
+		return false
+	}
+
 	if IsFileSVG(res.Name()) {
 		return true
 	}
