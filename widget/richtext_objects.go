@@ -762,14 +762,18 @@ type RichTextStyle struct {
 	Alignment fyne.TextAlign
 	ColorName fyne.ThemeColorName
 	Inline    bool
-	SizeName  fyne.ThemeSizeName // The theme name of the text size to use, if blank will be the standard text size
+	SizeName  fyne.ThemeSizeName
 	TextStyle fyne.TextStyle
 	// Since: 2.8
 	QuotingDepth int
 
+	// BackgroundColorName задаёт цвет подложки для этого сегмента.
+	// Если пусто — подложка не рисуется.
+	// Since: xssyne
+	BackgroundColorName fyne.ThemeColorName
+
 	// an internal detail where we obscure password fields
 	concealed bool
-
 	// an internal detail marking inline code, which renders on a background fill
 	codeInline bool
 }
@@ -808,11 +812,23 @@ func (t *TextSegment) Textual() string {
 	return t.Text
 }
 
+func (t *TextSegment) hasBackground() bool {
+	return t.Style.codeInline || t.Style.BackgroundColorName != ""
+}
+
+func (t *TextSegment) bgColor() color.Color {
+	if t.Style.BackgroundColorName != "" {
+		return theme.ColorForWidget(t.Style.BackgroundColorName, t.parent)
+	}
+	// fallback для inline-кода
+	return theme.ColorForWidget(theme.ColorNameInputBackground, t.parent)
+}
+
 // Visual returns a new instance of a graphical element required to render this segment.
 func (t *TextSegment) Visual() fyne.CanvasObject {
 	text := canvas.NewText(t.Text, t.color())
-	if t.Style.codeInline {
-		bg := canvas.NewRectangle(theme.ColorForWidget(theme.ColorNameInputBackground, t.parent))
+	if t.hasBackground() {
+		bg := canvas.NewRectangle(t.bgColor())
 		c := &fyne.Container{Layout: &codeInlineLayout{}, Objects: []fyne.CanvasObject{bg, text}}
 		t.Update(c)
 		return c
@@ -825,10 +841,10 @@ func (t *TextSegment) Visual() fyne.CanvasObject {
 // Update applies the current state of this text segment to an existing visual.
 func (t *TextSegment) Update(o fyne.CanvasObject) {
 	obj, ok := o.(*canvas.Text)
-	if !ok { // inline code container: [background, text]
+	if !ok { // контейнер с подложкой: [background, text]
 		c := o.(*fyne.Container)
 		bg := c.Objects[0].(*canvas.Rectangle)
-		bg.FillColor = theme.ColorForWidget(theme.ColorNameInputBackground, t.parent)
+		bg.FillColor = t.bgColor()
 		bg.Refresh()
 		obj = c.Objects[1].(*canvas.Text)
 	}
