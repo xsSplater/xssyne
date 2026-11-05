@@ -929,10 +929,23 @@ func (t *Table) tapped(pos fyne.Position, modifiers fyne.KeyModifier) {
 func (t *Table) templateSize() fyne.Size {
 	if f := t.CreateCell; f != nil {
 		template := createItemAndApplyThemeScope(f, t)
-		if !t.ShowHeaderRow && !t.ShowHeaderColumn {
-			return template.MinSize()
+
+		// Защита от сжатия строк.
+		// Шаблон ячейки (CreateCell) обычно пустой, поэтому Fyne может
+		// посчитать высоту строки слишком маленькой. Мы принудительно
+		// задаём минимальную высоту, равную размеру шрифта + отступы,
+		// чтобы текст внутри ячеек никогда не наезжал друг на друга.
+		sz := template.MinSize()
+		th := t.Theme()
+		minTextHeight := th.Size(theme.SizeNameText) + th.Size(theme.SizeNamePadding)*2
+		if sz.Height < minTextHeight {
+			sz.Height = minTextHeight
 		}
-		return internal.MaxSizes(template.MinSize(), t.createHeader().MinSize())
+
+		if !t.ShowHeaderRow && !t.ShowHeaderColumn {
+			return sz
+		}
+		return internal.MaxSizes(sz, t.createHeader().MinSize())
 	}
 
 	fyne.LogError("Missing CreateCell callback required for Table", nil)
@@ -1956,4 +1969,29 @@ func (t *Table) DoubleTapped(e *fyne.PointEvent) {
 	if f := t.OnDoubleTapped; f != nil {
 		f(id)
 	}
+}
+
+func (t *Table) BatchSelect(ids []TableCellID) {
+	if t.Length == nil {
+		return
+	}
+	rows, _ := t.Length()
+
+	t.selectedRows = make(map[int]bool)
+	for _, id := range ids {
+		if id.Row >= 0 && id.Row < rows {
+			t.selectedRows[id.Row] = true
+		}
+	}
+
+	if len(ids) > 0 {
+		t.selectedCell = &ids[0]
+	} else {
+		t.selectedCell = nil
+	}
+
+	if t.moveCallback != nil {
+		t.moveCallback()
+	}
+	t.Refresh()
 }

@@ -98,25 +98,29 @@ func (m *Manager) Show(w fyne.Widget, text string, pos fyne.Position) {
 // поэтому m.style и m.canvas можно читать без блокировки.
 func (m *Manager) showPopUp(text string, pos fyne.Position) {
 	const maxWidth = 333
-	const padding = float32(1)
+	// const padding = float32(1) <--- Больше не нужна, так как container.NewPadded делает это сам
 	const outerPadding = float32(1)
 
 	// Создаём Label с переносом
 	label := widget.NewLabel(text)
-	label.Wrapping = fyne.TextWrapWord
 	label.TextStyle = fyne.TextStyle{Bold: m.style.FontBold}
 
-	// Ограничиваем ширину: сначала даём maxWidth для переноса, потом
-	// смотрим реальную ширину после wrap и сжимаем до неё.
-	label.Resize(fyne.NewSize(maxWidth, label.MinSize().Height))
-	labelSize := label.MinSize()
-
-	// Короткий текст не должен растягиваться на весь maxWidth.
-	width := labelSize.Width + 2*padding
-	if width > maxWidth+2*padding {
-		width = maxWidth + 2*padding
+	// 1. Вычисляем реальную ширину текста БЕЗ переноса (для коротких текстов)
+	label.Wrapping = fyne.TextWrapOff
+	unwrappedWidth := label.MinSize().Width
+	finalWidth := unwrappedWidth
+	if finalWidth > maxWidth {
+		finalWidth = maxWidth
 	}
-	height := labelSize.Height + 2*padding
+
+	// 2. Включаем перенос обратно
+	label.Wrapping = fyne.TextWrapWord
+
+	// 3. Создаём прозрачный спейсер, который заставит Label переноситься
+	// ровно на ширине finalWidth, и при этом корректно рассчитает высоту
+	spacer := canvas.NewRectangle(color.Transparent)
+	spacer.SetMinSize(fyne.NewSize(finalWidth, 1))
+	labelBox := container.NewStack(spacer, label)
 
 	// Фон
 	bg := canvas.NewRectangle(m.style.Background)
@@ -128,29 +132,17 @@ func (m *Manager) showPopUp(text string, pos fyne.Position) {
 	border.StrokeColor = m.style.BorderColor
 	border.CornerRadius = 4
 
-	// Контейнер без автоматического layout
-	content := container.NewWithoutLayout()
-	content.Add(bg)
-	content.Add(border)
-	content.Add(label)
+	// 4. Собираем всё в автоматический Stack. Fyne сам растянет bg и border
+	// до точного размера labelBox с учётом правильного переноса текста!
+	content := container.NewStack(bg, border, container.NewPadded(labelBox))
 
-	// Позиционируем элементы вручную
-	bg.Move(fyne.NewPos(0, 0))
-	bg.Resize(fyne.NewSize(width, height))
-
-	border.Move(fyne.NewPos(0, 0))
-	border.Resize(fyne.NewSize(width, height))
-
-	label.Move(fyne.NewPos(padding, padding))
-	label.Resize(fyne.NewSize(maxWidth, labelSize.Height))
-
-	// Задаём размер контента
-	content.Resize(fyne.NewSize(width, height))
+	// 5. ПОЛУЧАЕМ ИДЕАЛЬНЫЙ РАЗМЕР, который только что рассчитал Fyne
+	contentSize := content.MinSize()
 
 	// Создаём PopUp с небольшими внешними отступами
 	popUp := widget.NewPopUp(content, m.canvas)
 	popUp.SetModal(false)
-	popUpSize := fyne.NewSize(width+outerPadding*2, height+outerPadding*2)
+	popUpSize := fyne.NewSize(contentSize.Width+outerPadding*2, contentSize.Height+outerPadding*2)
 	popUp.Resize(popUpSize)
 
 	// Позиционируем с учётом границ экрана
