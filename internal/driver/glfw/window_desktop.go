@@ -131,6 +131,28 @@ func (w *window) SetFullScreen(full bool) {
 	}
 }
 
+// Maximize maximises the window (like the titlebar button). No-op while
+// fullscreen or before the native viewport has been created.
+func (w *window) Maximize() {
+	if w.view() == nil {
+		return
+	}
+	async.EnsureMain(func() {
+		if w.isClosing() || w.fullScreen || w.fullScreenSecondary {
+			return
+		}
+		w.view().Maximize()
+	})
+}
+
+// IsMaximized reports whether the window is currently maximised.
+func (w *window) IsMaximized() bool {
+	if w.view() == nil {
+		return false
+	}
+	return w.view().GetAttrib(glfw.Maximized) == glfw.True
+}
+
 func (w *window) RequestAlwaysOnTop() {
 	w.onTop = true
 }

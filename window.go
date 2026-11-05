@@ -1,3 +1,5 @@
+// xssyne/window.go
+
 package fyne
 
 // Window describes a user interface window. Depending on the platform an app
@@ -14,6 +16,18 @@ type Window interface {
 	// SetFullScreen changes the requested fullScreen property
 	// true for a fullScreen window and false to unset this.
 	SetFullScreen(bool)
+
+	// Maximize maximises the window as if the user clicked the maximise
+	// button on the titlebar. No-op while fullscreen or before the
+	// native viewport has been created.
+	//
+	// Since 2.8
+	Maximize()
+	// IsMaximized reports whether the window is currently maximised.
+	// Returns false before the native viewport has been created.
+	//
+	// Since 2.8
+	IsMaximized() bool
 
 	// Resize this window to the requested content size.
 	// The result may not be exactly as desired due to various desktop or
