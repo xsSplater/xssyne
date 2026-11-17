@@ -91,6 +91,30 @@ type Image struct {
 	// Since: 2.7
 	CornerRadius float32
 
+	// Rotation — угол поворота картинки в градусах по часовой стрелке.
+	//
+	// Это НЕ поворот «самой картинки» в смысле изменения её размеров
+	// или layout'а: MinSize и Size остаются прежними, painter лишь
+	// поворачивает 4 вершины quad'а вокруг центра при отрисовке.
+	// Поэтому:
+	//   - в layout ничего не «прыгает»;
+	//   - 90° на квадратной иконке — иконка поворачивается;
+	//   - 90° на прямоугольной иконке — прямоугольник становится
+	//     вертикальным, но продолжает занимать прежнюю площадь
+	//     (при FillMode=Contain — с полями по бокам).
+	//
+	// Анимируйте через canvas.Animation или fyne.NewAnimation:
+	//   anim := fyne.NewAnimation(200*time.Millisecond, func(v float32) {
+	//       img.SetRotation(90 * v)
+	//   })
+	//   anim.Start()
+	//
+	// В software painter (headless, fyne test) поворот не применяется —
+	// логика тестов не зависит от визуальных эффектов.
+	//
+	// Since: xssyne
+	Rotation float32
+
 	previousRender bool // did we successfully draw before? if so a nil content will need a reset
 }
 
@@ -453,4 +477,17 @@ func decodeImage(data []byte) (image.Image, error) {
 	// 3. Fallback — вернём ошибку исходного декодера.
 	img, _, err := image.Decode(bytes.NewReader(data))
 	return img, err
+}
+
+// SetRotation задаёт угол поворота картинки в градусах (по часовой
+// стрелке). Если значение не изменилось — no-op, чтобы не дёргать
+// repaint на каждом кадре анимации, когда она уже остановилась.
+func (i *Image) SetRotation(degrees float32) {
+	if i.Rotation == degrees {
+		return
+	}
+	i.Rotation = degrees
+	// Package-level Refresh — lightweight repaint, БЕЗ повторного
+	// декодирования текстуры (в отличие от i.Refresh()).
+	Refresh(i)
 }

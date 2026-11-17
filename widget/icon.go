@@ -1,3 +1,5 @@
+// xssyne/widget/icon.go
+
 package widget
 
 import (
@@ -26,16 +28,15 @@ func (i *iconRenderer) Layout(size fyne.Size) {
 	i.Objects()[0].Resize(size)
 }
 
+// xssyne
 func (i *iconRenderer) Refresh() {
-	if i.image.Resource == i.image.cachedRes {
-		return
-	}
-
+	// Нельзя early-return по сравнению указателей: темизированный
+	// ресурс резолвится по-разному при смене темы, хотя указатель тот же.
 	i.raster.Resource = i.image.Resource
 	i.image.cachedRes = i.image.Resource
 
 	if i.image.Resource == nil {
-		i.raster.Image = nil // reset the internal caching too...
+		i.raster.Image = nil
 	}
 
 	i.raster.Refresh()

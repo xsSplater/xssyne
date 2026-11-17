@@ -1,3 +1,5 @@
+// xssyne/data/binding/lists.go
+
 package binding
 
 import (
@@ -467,11 +469,11 @@ func (l *boundList[T]) doReload() (trigger bool, retErr error) {
 		trigger = true
 	}
 
+	// xssyne
+	// После shrink-ветки len(l.items) гарантированно == newLen, после grow —
+	// тоже == newLen. Значит i всегда < newLen, проверка i > oldLen || i > newLen
+	// недостижима — убираем.
 	for i, item := range l.items {
-		if i > oldLen || i > newLen {
-			break
-		}
-
 		var err error
 		if l.updateExternal {
 			err = item.(*boundExternalListItem[T]).setIfChanged((*l.val)[i])

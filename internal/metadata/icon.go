@@ -17,7 +17,7 @@ func ScaleIcon(data fyne.Resource, size int) fyne.Resource {
 		return data
 	}
 
-	if img.Bounds().Dx() <= size {
+	if img.Bounds().Dx() <= size && img.Bounds().Dy() <= size {
 		return data
 	}
 

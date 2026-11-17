@@ -1,3 +1,5 @@
+// xssyne/text.go
+
 package fyne
 
 // TextAlign represents the horizontal alignment of text within a widget or
@@ -67,9 +69,18 @@ type TextStyle struct {
 	Strikethrough bool // Should text be struck through.
 }
 
+// xssyne
 // MeasureText uses the current driver to calculate the size of text when rendered.
 // The font used will be read from the current app's theme.
 func MeasureText(text string, size float32, style TextStyle) Size {
-	s, _ := CurrentApp().Driver().RenderedTextSize(text, size, style, nil)
+	app := CurrentApp()
+	if app == nil {
+		return Size{}
+	}
+	d := app.Driver()
+	if d == nil {
+		return Size{}
+	}
+	s, _ := d.RenderedTextSize(text, size, style, nil)
 	return s
 }

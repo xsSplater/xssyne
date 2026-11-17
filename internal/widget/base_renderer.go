@@ -1,3 +1,5 @@
+// xssyne/internal/widget/base_renderer.go
+
 package widget
 
 import "fyne.io/fyne/v2"

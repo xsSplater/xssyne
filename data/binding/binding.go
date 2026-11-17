@@ -2,6 +2,9 @@
 
 // Package binding provides support for binding data to widgets.
 // All APIs in the binding package are safe to invoke directly from any goroutine.
+
+// xssyne/data/binding/binding.go
+
 package binding
 
 import (
@@ -155,13 +158,16 @@ func (b *boundExternalUntyped) Get() (any, error) {
 	return b.val.Interface(), nil
 }
 
+// xssyne
 func (b *boundExternalUntyped) Set(val any) error {
 	b.lock.Lock()
 	if b.old == val {
 		b.lock.Unlock()
 		return nil
 	}
-	b.val.Set(reflect.ValueOf(val))
+	// reflect.ValueOf(nil) — это zero Value, на котором .Set() паникует.
+	// Оборачиваем в *any, чтобы получить валидный Value даже при val == nil.
+	b.val.Set(reflect.ValueOf(&val).Elem())
 	b.old = val
 	b.lock.Unlock()
 

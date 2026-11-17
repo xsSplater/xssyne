@@ -1,3 +1,5 @@
+// xssyne/internal/async/goroutine.go
+
 package async
 
 import (
@@ -78,12 +80,23 @@ func logStackTop(skip int) {
 	log.Printf("  From: %s:%d", frame.File, frame.Line)
 }
 
+// xssyne
 func goroutineID() (id uint64) {
-	var buf [30]byte
+	var buf [64]byte
 	runtime.Stack(buf[:], false)
-	for i := 10; buf[i] != ' '; i++ {
-		id = id*10 + uint64(buf[i]&15)
-	}
 
+	const prefix = "goroutine "
+	for i := len(prefix); i < len(buf); i++ {
+		c := buf[i]
+		if c == ' ' {
+			break
+		}
+		if c < '0' || c > '9' {
+			// Неожиданный формат — возвращаем 0, IsMainGoroutine
+			// вернёт false (безопасный дефолт — не считаем main).
+			return 0
+		}
+		id = id*10 + uint64(c-'0')
+	}
 	return id
 }

@@ -1,3 +1,5 @@
+// xssyne/layout.go
+
 package fyne
 
 // Layout defines how [CanvasObject]s may be laid out in a specified Size.

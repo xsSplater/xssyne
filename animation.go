@@ -1,3 +1,5 @@
+// xssyne/animation.go
+
 package fyne
 
 import "time"
@@ -48,21 +50,38 @@ type Animation struct {
 // rendered frame between [time.Now] and the specified duration. The callback values start at 0.0 and
 // will be 1.0 when the animation completes.
 //
-// Since: 2.0
+// xssyne
 func NewAnimation(d time.Duration, fn func(float32)) *Animation {
-	return &Animation{Duration: d, Tick: fn}
+	return &Animation{
+		Duration: d,
+		Tick:     fn,
+		Curve:    AnimationEaseInOut,
+	}
 }
 
+// xssyne
 // Start registers the animation with the application run-loop and starts its execution.
 func (a *Animation) Start() {
-	CurrentApp().Driver().StartAnimation(a)
+	app := CurrentApp()
+	if app == nil {
+		LogError("cannot start animation: no current app", nil)
+		return
+	}
+	if d := app.Driver(); d != nil {
+		d.StartAnimation(a)
+	}
 }
 
 // Stop will end this animation and remove it from the run-loop.
 func (a *Animation) Stop() {
-	CurrentApp().Driver().StopAnimation(a)
+	app := CurrentApp()
+	if app == nil {
+		return
+	}
+	if d := app.Driver(); d != nil {
+		d.StopAnimation(a)
+	}
 }
-
 func animationEaseIn(val float32) float32 {
 	return val * val
 }

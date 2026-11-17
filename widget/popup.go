@@ -1,3 +1,5 @@
+// xssyne/widget/popup.go
+
 package widget
 
 import (
@@ -21,6 +23,16 @@ type PopUp struct {
 
 	overlay       *widget.OverlayContainer
 	modal, manual bool
+
+	// explicitSize — если задан через SetSize, используется
+	// как размер popup'а напрямую, минуя логику
+	// Max(content.MinSize()). Позволяет задать размер меньше
+	// content.MinSize() (контент при этом будет обрезан, но
+	// это осознанный выбор вызывающего).
+	//
+	// Нулевое значение = автоматический режим (обратная
+	// совместимость с существующим поведением).
+	explicitSize fyne.Size
 }
 
 // Hide this widget, if it was previously visible
@@ -186,19 +198,31 @@ type popUpRenderer struct {
 }
 
 func (r *popUpRenderer) Layout(s fyne.Size) {
-	size := s.Max(r.popUp.Content.MinSize())
+	var size fyne.Size
+	if !r.popUp.explicitSize.IsZero() {
+		// Размер задан явно — используем его как есть.
+		size = r.popUp.explicitSize
+	} else {
+		// Автоматический режим: не меньше content.MinSize().
+		size = s.Max(r.popUp.Content.MinSize())
+	}
 	if r.popUp.Canvas != nil {
 		canvasSize := r.popUp.Canvas.Size()
 		if !canvasSize.IsZero() {
-			size = size.Min(r.popUp.Canvas.Size())
+			size = size.Min(canvasSize)
 		}
 	}
 	r.popUp.Content.Resize(size)
-
 	r.background.Resize(size)
 }
 
 func (r *popUpRenderer) MinSize() fyne.Size {
+	// При явно заданном размере внешние layout-менеджеры должны видеть
+	// именно его — иначе, например, NewCenter отцентрирует popup по
+	// Content.MinSize(), а не по фактическому размеру.
+	if !r.popUp.explicitSize.IsZero() {
+		return r.popUp.explicitSize
+	}
 	return r.popUp.Content.MinSize()
 }
 
@@ -211,8 +235,22 @@ func (r *popUpRenderer) Refresh() {
 	r.background.FillColor = th.Color(theme.ColorNameOverlayBackground, v)
 	r.background.Shadow.Color = th.Color(theme.ColorNameShadow, v)
 	r.background.CornerRadius = th.Size(theme.SizeNamePopupRadius)
-	expectedContentSize := innerSize.Max(r.popUp.MinSize()).Subtract(r.padding())
-	shouldRelayout := r.popUp.Content.Size() != expectedContentSize
+
+	// Считаем, какой размер Content должен иметь после Layout(). Логика
+	// должна совпадать с popUpRenderer.Layout(), иначе получим ложное
+	// shouldRelayout и лишние вызовы Layout() на каждом Refresh.
+	var expected fyne.Size
+	if !r.popUp.explicitSize.IsZero() {
+		expected = r.popUp.explicitSize
+	} else {
+		expected = r.popUp.Size().Max(r.popUp.Content.MinSize())
+	}
+	if r.popUp.Canvas != nil {
+		if cs := r.popUp.Canvas.Size(); !cs.IsZero() {
+			expected = expected.Min(cs)
+		}
+	}
+	shouldRelayout := r.popUp.Content.Size() != expected
 
 	if r.background.Size() != innerSize || r.background.Position() != innerPos || shouldRelayout {
 		r.Layout(r.popUp.Size())
@@ -246,4 +284,25 @@ func (p *PopUp) SetModal(modal bool) {
 		p.Hide()
 		p.Show()
 	}
+}
+
+// SetSize явно задаёт размер popup'а. В отличие от стандартного
+// Resize, значение НЕ поднимается до content.MinSize() — popup будет
+// ровно этого размера (в пределах canvas), а контент — растянется
+// или обрежется по нему.
+//
+// Вызов до Show/ShowAtPosition — фиксирует размер. Вызов после —
+// немедленно применяет (trigger Refresh → Layout).
+//
+// Чтобы вернуть авторазмер по content.MinSize(), используйте ClearSize.
+func (p *PopUp) SetSize(size fyne.Size) {
+	p.explicitSize = size
+	p.Resize(size)
+}
+
+// ClearSize снимает размер, заданный SetSize, и возвращает popup к
+// авторазмеру по content.MinSize().
+func (p *PopUp) ClearSize() {
+	p.explicitSize = fyne.Size{}
+	p.Resize(p.MinSize())
 }

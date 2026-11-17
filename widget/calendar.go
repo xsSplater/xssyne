@@ -1,3 +1,5 @@
+// xssyne/widget/calendar.go
+
 package widget
 
 import (
@@ -51,23 +53,28 @@ func NewCalendar(cT time.Time, changed func(time.Time)) *Calendar {
 	return c
 }
 
+// xssyne
 // CreateRenderer returns a new WidgetRenderer for this widget.
 // This should not be called by regular code, it is used internally to render a widget.
 func (c *Calendar) CreateRenderer() fyne.WidgetRenderer {
 	c.monthPrevious = NewButtonWithIcon("", theme.NavigateBackIcon(), func() {
-		c.currentTime = c.currentTime.AddDate(0, -1, 0)
-		// Dates are 'normalised', forcing date to start from the start of the month ensures move from March to February
+		// Нормализуем к началу месяца ДО AddDate: иначе 31 марта
+		// AddDate(0, -1, 0) даёт 2 марта (overflow), и последующий
+		// time.Date(... Month(), 1) уже остаётся в марте.
 		c.currentTime = time.Date(c.currentTime.Year(), c.currentTime.Month(), 1, 0, 0, 0, 0, c.currentTime.Location())
+		c.currentTime = c.currentTime.AddDate(0, -1, 0)
 		c.monthLabel.SetText(c.monthYear())
 		c.dates.Objects = c.calendarObjects()
+		c.dates.Refresh() // Objects изменились — перекладываем сетку
 	})
 	c.monthPrevious.Importance = LowImportance
 
 	c.monthNext = NewButtonWithIcon("", theme.NavigateNextIcon(), func() {
-		c.currentTime = c.currentTime.AddDate(0, 1, 0)
 		c.currentTime = time.Date(c.currentTime.Year(), c.currentTime.Month(), 1, 0, 0, 0, 0, c.currentTime.Location())
+		c.currentTime = c.currentTime.AddDate(0, 1, 0)
 		c.monthLabel.SetText(c.monthYear())
 		c.dates.Objects = c.calendarObjects()
+		c.dates.Refresh()
 	})
 	c.monthNext.Importance = LowImportance
 
@@ -238,4 +245,27 @@ func shortDayName(in string) string {
 	key := lower + ".short"
 	long := lang.X(lower, in)
 	return strings.ToUpper(lang.X(key, long[:3]))
+}
+
+// xssyne
+// MinSize возвращает фиксированный минимальный размер, не зависящий от
+// текущего отображаемого месяца. Это предотвращает перекладывание
+// родительского layout при переключении месяцев (ширина заголовка
+// "September 2006" — самая большая из возможных).
+func (c *Calendar) MinSize() fyne.Size {
+	c.ExtendBaseWidget(c)
+
+	pad := theme.Padding()
+	cell := minCellContent.MinSize()
+	gridW := cell.Width*daysPerWeek + pad*(daysPerWeek-1)
+	gridH := cell.Height*maxWeeksPerMonth + pad*(maxWeeksPerMonth-1)
+
+	// Ширина самой длинной подписи месяца, чтобы nav не "прыгала".
+	monthW := fyne.MeasureText("September 2006",
+		theme.Size(theme.SizeNameText), fyne.TextStyle{}).Width
+
+	// Примерная высота навигационной панели (кнопки + отступы).
+	navH := theme.IconInlineSize() + pad*2
+
+	return fyne.NewSize(fyne.Max(gridW, monthW), gridH+navH)
 }

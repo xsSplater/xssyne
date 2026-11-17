@@ -1,3 +1,5 @@
+// xssyne/overlay_stack.go
+
 package fyne
 
 // OverlayStack is a stack of [CanvasObject]s intended to be used as overlays of a [Canvas].

@@ -1,3 +1,5 @@
+// xssyne/internal/widget/scroller.go
+
 package widget
 
 import (
@@ -578,11 +580,13 @@ func (s *Scroll) SetMinSize(size fyne.Size) {
 
 // Refresh causes this widget to be redrawn in it's current state
 func (s *Scroll) Refresh() {
-	s.refreshBars()
-
-	if s.Content != nil {
-		s.Content.Refresh()
+	if s.Content == nil {
+		s.Base.Refresh()
+		return
 	}
+
+	s.refreshBars()
+	s.Content.Refresh()
 }
 
 // Resize is called when this scroller should change size. We refresh to ensure the scroll bars are updated.

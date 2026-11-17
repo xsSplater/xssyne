@@ -1,3 +1,5 @@
+// xssyne/thread.go
+
 package fyne
 
 // DoAndWait is used to execute a specified function in the main Fyne runtime context.
@@ -6,7 +8,16 @@ package fyne
 //
 // Since: 2.6
 func DoAndWait(fn func()) {
-	CurrentApp().Driver().DoFromGoroutine(fn, true)
+	app := CurrentApp()
+	if app == nil {
+		return // CurrentApp уже залогировал "no app started"
+	}
+	driver := app.Driver()
+	if driver == nil {
+		LogError("xssyne.DoAndWait called when driver is not available", nil)
+		return
+	}
+	driver.DoFromGoroutine(fn, true)
 }
 
 // Do is used to execute a specified function in the main Fyne runtime context without waiting.
@@ -16,5 +27,14 @@ func DoAndWait(fn func()) {
 //
 // Since: 2.6
 func Do(fn func()) {
-	CurrentApp().Driver().DoFromGoroutine(fn, false)
+	app := CurrentApp()
+	if app == nil {
+		return
+	}
+	driver := app.Driver()
+	if driver == nil {
+		LogError("xssyne.Do called when driver is not available", nil)
+		return
+	}
+	driver.DoFromGoroutine(fn, false)
 }

@@ -1,3 +1,5 @@
+// xssyne/container/apptabs.go
+
 package container
 
 import (
@@ -48,13 +50,17 @@ func (t *AppTabs) CreateRenderer() fyne.WidgetRenderer {
 	th := t.Theme()
 	v := fyne.CurrentApp().Settings().ThemeVariant()
 
+	// СОЗДАЁМ ФОН (используем цвет основного фона окна)
+	bg := canvas.NewRectangle(th.Color(theme.ColorNameBackground, v))
+
 	r := &appTabsRenderer{
 		baseTabsRenderer: baseTabsRenderer{
 			bar:       &fyne.Container{},
 			divider:   canvas.NewRectangle(th.Color(theme.ColorNameShadow, v)),
 			indicator: canvas.NewRectangle(th.Color(theme.ColorNamePrimary, v)),
 		},
-		appTabs: t,
+		appTabs:    t,
+		background: bg, // Передаем созданный фон
 	}
 	r.action = r.buildOverflowTabsButton()
 	r.tabs = t
@@ -262,10 +268,15 @@ var _ fyne.WidgetRenderer = (*appTabsRenderer)(nil)
 
 type appTabsRenderer struct {
 	baseTabsRenderer
-	appTabs *AppTabs
+	appTabs    *AppTabs
+	background *canvas.Rectangle
 }
 
 func (r *appTabsRenderer) Layout(size fyne.Size) {
+	// Растягиваем фон на весь размер виджета (БЕЗ ЗАПЯТОЙ В КОНЦЕ)
+	r.background.Resize(size)
+	r.background.Move(fyne.NewPos(0, 0))
+
 	// Try render as many tabs as will fit, others will appear in the overflow
 	if len(r.appTabs.Items) == 0 {
 		r.updateTabs(0)
@@ -299,14 +310,21 @@ func (r *appTabsRenderer) MinSize() fyne.Size {
 }
 
 func (r *appTabsRenderer) Objects() []fyne.CanvasObject {
-	return r.objects(r.appTabs)
+	// Получаем стандартные объекты вкладок
+	objs := r.objects(r.appTabs)
+
+	// Возвращаем наш фон первым (он будет позади всех вкладок), а за ним все остальные элементы
+	return append([]fyne.CanvasObject{r.background}, objs...)
 }
 
 func (r *appTabsRenderer) Refresh() {
+	th := r.appTabs.Theme()
+	v := fyne.CurrentApp().Settings().ThemeVariant()
+	r.background.FillColor = th.Color(theme.ColorNameBackground, v)
+	r.background.Refresh()
+
 	r.Layout(r.appTabs.Size())
-
 	r.refresh(r.appTabs)
-
 	canvas.Refresh(r.appTabs)
 }
 

@@ -1,4 +1,4 @@
-//go:build ((gles || arm || arm64) && !android && !ios && !mobile && !darwin && !wasm && !test_web_driver) || ((android || ios || mobile) && (!wasm || !test_web_driver)) || wasm || test_web_driver
+//go:build (gles || arm || arm64) && (windows || linux)
 
 package gl
 

@@ -1,3 +1,5 @@
+// xssyne/preferences.go
+
 package fyne
 
 // Preferences describes the ways that an app can save and load user preferences

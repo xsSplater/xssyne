@@ -1,4 +1,4 @@
-//go:build !wasm && (linux || freebsd || openbsd || netbsd) && ((!x11 && !wayland) || wayland)
+//go:build linux && ((!x11 && !wayland) || wayland)
 
 package glfw
 
@@ -34,6 +34,9 @@ static void frame_state_free(frame_state *s) {
     if (!s) return;
     if (s->cb) wl_callback_destroy(s->cb);
     free(s);
+}
+static void frame_state_mark_ready(frame_state *s) {
+    if (s) s->ready = 1;
 }
 */
 import "C"

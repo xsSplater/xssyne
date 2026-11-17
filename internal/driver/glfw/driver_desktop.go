@@ -1,4 +1,4 @@
-//go:build !wasm && !test_web_driver
+//go:build (linux || windows) && !wasm && !test_web_driver
 
 // xssyne/internal/driver/glfw/driver_desktop.go
 

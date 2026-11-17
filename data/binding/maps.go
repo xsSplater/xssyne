@@ -1,3 +1,5 @@
+// xssyne/data/binding/maps.go
+
 package binding
 
 import (
@@ -146,11 +148,17 @@ func (b *mapBase) Keys() []string {
 	return ret
 }
 
+// xssyne
 func (b *mapBase) Delete(key string) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
 	delete(b.items, key)
+	// Раньше удалялось только из b.items, и b.val оставался с ключом:
+	// Get() возвращал «удалённый» ключ, а Reload() его воскрешал.
+	if b.val != nil {
+		delete(*b.val, key)
+	}
 
 	b.trigger()
 }

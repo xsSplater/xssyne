@@ -1,4 +1,4 @@
-//go:build !linux && !freebsd && !openbsd && !netbsd
+//go:build windows
 
 package glfw
 

@@ -1,3 +1,5 @@
+// xssyne/container/doctabs.go
+
 package container
 
 import (
@@ -124,19 +126,22 @@ func (t *DocTabs) MinSize() fyne.Size {
 	return t.BaseWidget.MinSize()
 }
 
+// xssyne
 // Remove tab by value.
 func (t *DocTabs) Remove(item *TabItem) {
 	removeItem(t, item)
-	// t.Refresh()
+	// Без Refresh удаление таба (особенно не текущего) невидимо
+	// до следующего внешнего refresh.
+	t.Refresh()
 }
 
+// xssyne
 // RemoveIndex removes tab by index.
 func (t *DocTabs) RemoveIndex(index int) {
-	selected := t.selected()
+	// Refresh нужен всегда: даже когда индекс совпадает с selection,
+	// содержимое вкладки на этом индексе уже другое (бывшая следующая).
 	removeIndex(t, index)
-	if index != selected {
-		t.Refresh()
-	}
+	t.Refresh()
 }
 
 // Select sets the specified TabItem to be selected and its content visible.
@@ -160,10 +165,14 @@ func (t *DocTabs) SelectedIndex() int {
 	return t.selected()
 }
 
+// xssyne
 // SetItems sets the containers items and refreshes.
 func (t *DocTabs) SetItems(items []*TabItem) {
 	setItems(t, items)
-	// t.Refresh()
+	// setItems флашит Refresh только при смене выделения. При
+	// добавлении/удалении табов без изменения selection UI останется
+	// со старым набором — Refresh обязателен.
+	t.Refresh()
 }
 
 // SetTabLocation sets the location of the tab bar

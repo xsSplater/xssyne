@@ -1,3 +1,5 @@
+// xssyne/container/theme.go
+
 package container
 
 import (
@@ -78,11 +80,16 @@ func addFeatures(th fyne.Theme, o *ThemeOverride) fyne.Theme {
 	return &featureTheme{Theme: th, over: o}
 }
 
+// xssyne
 func (f *featureTheme) Feature(n intTheme.FeatureName) any {
 	if n == intTheme.FeatureNameDeviceIsMobile {
 		return f.over.mobile
 	}
-
+	if t, ok := f.Theme.(interface {
+		Feature(intTheme.FeatureName) any
+	}); ok {
+		return t.Feature(n)
+	}
 	return nil
 }
 

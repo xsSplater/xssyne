@@ -1,3 +1,5 @@
+// xssyne/internal/painter/gl/draw.go
+
 package gl
 
 import (
@@ -212,11 +214,11 @@ func (p *painter) drawCircle(circle *canvas.Circle, pos fyne.Position, frame fyn
 }
 
 func (p *painter) drawGradient(o fyne.CanvasObject, texCreator func(fyne.CanvasObject) Texture, pos fyne.Position, frame fyne.Size) {
-	p.drawTextureWithDetails(o, texCreator, pos, o.Size(), frame, canvas.ImageFillStretch, 1.0, 0)
+	p.drawTextureWithDetails(o, texCreator, pos, o.Size(), frame, canvas.ImageFillStretch, 1.0, 0, 0)
 }
 
 func (p *painter) drawImage(img *canvas.Image, pos fyne.Position, frame fyne.Size) {
-	p.drawTextureWithDetails(img, p.newGlImageTexture, pos, img.Size(), frame, img.FillMode, float32(img.Alpha()), 0)
+	p.drawTextureWithDetails(img, p.newGlImageTexture, pos, img.Size(), frame, img.FillMode, float32(img.Alpha()), 0, img.Rotation)
 }
 
 func (p *painter) drawLine(line *canvas.Line, pos fyne.Position, frame fyne.Size) {
@@ -534,7 +536,7 @@ func (p *painter) drawRaster(img *canvas.Raster, pos fyne.Position, frame fyne.S
 	if img.Generator == nil {
 		return
 	}
-	p.drawTextureWithDetails(img, p.newGlRasterTexture, pos, img.Size(), frame, canvas.ImageFillStretch, float32(img.Alpha()), 0)
+	p.drawTextureWithDetails(img, p.newGlRasterTexture, pos, img.Size(), frame, canvas.ImageFillStretch, float32(img.Alpha()), 0, 0)
 }
 
 func (p *painter) drawRectangle(rect *canvas.Rectangle, pos fyne.Position, frame fyne.Size) {
@@ -868,7 +870,7 @@ func (p *painter) drawText(text *canvas.Text, pos fyne.Position, frame fyne.Size
 	fullWidth := int(math.Ceil(float64(size.Width * p.pixScale)))
 	if fullWidth <= p.maxTextureSize || p.maxTextureSize <= 0 {
 		p.freeClippedTextTexture(text)
-		p.drawTextureWithDetails(text, p.newGlTextTexture, pos, size, frame, canvas.ImageFillStretch, 1.0, 0)
+		p.drawTextureWithDetails(text, p.newGlTextTexture, pos, size, frame, canvas.ImageFillStretch, 1.0, 0, 0)
 	} else {
 		visibleOffset, visibleWidth := visibleTextPixels(pos, size, frame, clip, p.pixScale)
 		height := int(math.Ceil(float64(size.Height * p.pixScale)))
@@ -939,7 +941,7 @@ func (p *painter) drawTextureRegion(texture Texture, pos fyne.Position, size, fr
 }
 
 func (p *painter) drawTextureWithDetails(o fyne.CanvasObject, creator func(canvasObject fyne.CanvasObject) Texture,
-	pos fyne.Position, size, frame fyne.Size, fill canvas.ImageFill, alpha float32, pad float32,
+	pos fyne.Position, size, frame fyne.Size, fill canvas.ImageFill, alpha float32, pad float32, rotation float32,
 ) {
 	texture, err := p.getTexture(o, creator)
 	if err != nil {
@@ -958,6 +960,15 @@ func (p *painter) drawTextureWithDetails(o fyne.CanvasObject, creator func(canva
 		}
 	}
 	points, insets := p.rectCoords(size, pos, frame, fill, aspect, pad)
+
+	// Поворот делается после rectCoords: rectCoords возвращает
+	// axis-aligned quad в NDC, rotateImageQuad крутит его вокруг
+	// центра. Текстурные координаты (u,v) не трогаются — картинка
+	// поворачивается вместе с quad'ом.
+	if rotation != 0 {
+		rotateImageQuad(points, frame, rotation)
+	}
+
 	inner, _ := rectInnerCoords(size, pos, fill, aspect)
 
 	p.ctx.UseProgram(p.program.ref)
@@ -1248,4 +1259,69 @@ func kernelToRGBA(values []float32) []uint8 {
 		data[off+3] = 255 // A
 	}
 	return data
+}
+
+// rotateImageQuad поворачивает 4 угла quad'а (в NDC-координатах) на
+// degrees градусов по часовой стрелке вокруг центра quad'а.
+//
+// NDC не квадратный, если frame не квадратный, поэтому поворот
+// делается в screen-space: NDC → screen → rotate → обратно в NDC.
+// Это гарантирует, что картинка не «сплющится» на экранах с
+// нестандартным aspect ratio.
+//
+// Текстурные координаты (u,v) НЕ трогаются — они семплируются как
+// обычно, меняется только положение геометрии на экране.
+//
+// Layout points (результат rectCoords):
+//
+//	idx 0..4  : x, y, z, u, v   (top-left)
+//	idx 5..9  : x, y, z, u, v   (bottom-left)
+//	idx 10..14: x, y, z, u, v   (top-right)
+//	idx 15..19: x, y, z, u, v   (bottom-right)
+//
+// Порядок углов не важен для нашей задачи — center = среднее 4 углов,
+// и мы вращаем каждый угол независимо.
+func rotateImageQuad(points []float32, frame fyne.Size, degrees float32) {
+	if degrees == 0 || len(points) < 20 {
+		return
+	}
+	if frame.Width <= 0 || frame.Height <= 0 {
+		return
+	}
+
+	// Center quad'а в NDC.
+	var cx, cy float32
+	for i := 0; i < 4; i++ {
+		cx += points[i*5+0]
+		cy += points[i*5+1]
+	}
+	cx /= 4
+	cy /= 4
+
+	// Center в screen-space — используется как pivot.
+	cSx := (cx + 1) / 2 * frame.Width
+	cSy := (1 - cy) / 2 * frame.Height
+
+	rad := degrees * math.Pi / 180
+	cos := float32(math.Cos(float64(rad)))
+	sin := float32(math.Sin(float64(rad)))
+
+	for i := 0; i < 4; i++ {
+		ndcX := points[i*5+0]
+		ndcY := points[i*5+1]
+
+		// NDC → screen
+		sx := (ndcX + 1) / 2 * frame.Width
+		sy := (1 - ndcY) / 2 * frame.Height
+
+		// Поворот вокруг (cSx, cSy)
+		dx := sx - cSx
+		dy := sy - cSy
+		rx := cSx + dx*cos - dy*sin
+		ry := cSy + dx*sin + dy*cos
+
+		// screen → NDC
+		points[i*5+0] = rx/frame.Width*2 - 1
+		points[i*5+1] = 1 - ry/frame.Height*2
+	}
 }

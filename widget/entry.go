@@ -1,3 +1,5 @@
+// xssyne/widget/entry.go
+
 package widget
 
 import (
@@ -1820,7 +1822,7 @@ func (r *entryContentRenderer) Refresh() {
 	if focusedAppearance {
 		settings := fyne.CurrentApp().Settings()
 		if settings.ShowAnimations() {
-			r.content.entry.cursorAnim.start()
+			r.content.entry.cursorAnim.start(r.content.entry.Theme())
 		} else {
 			r.cursor.FillColor = th.Color(theme.ColorNamePrimary, settings.ThemeVariant())
 		}

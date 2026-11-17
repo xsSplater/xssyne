@@ -1,4 +1,4 @@
-//go:build ((!gles && !arm && !arm64) || darwin) && !wasm && !test_web_driver
+//go:build (linux || windows) && !gles && !arm && !arm64
 
 package glfw
 

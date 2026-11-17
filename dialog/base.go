@@ -132,7 +132,14 @@ func (d *dialog) SetOnClosed(closed func()) {
 	}
 }
 
+// xssyne
 func (d *dialog) hideWithResponse(resp bool) {
+	// Hide()/Dismiss() можно вызвать до Show() (например, диалог закрывают
+	// программно в ответ на изменение состояния). d.win тогда ещё nil,
+	// и старый код паниковал на d.win.Hide().
+	if d.win == nil {
+		return
+	}
 	d.win.Hide()
 	if d.callback != nil {
 		d.callback(resp)
@@ -198,14 +205,27 @@ func newThemedBackground() *themedBackground {
 	return t
 }
 
+// xssyne
 func (t *themedBackground) CreateRenderer() fyne.WidgetRenderer {
 	t.ExtendBaseWidget(t)
-	rect := canvas.NewRectangle(theme.Color(theme.ColorNameOverlayBackground))
-	rect.CornerRadius = theme.Size(theme.SizeNameDialogRadius)
-	return &themedBackgroundRenderer{rect, []fyne.CanvasObject{rect}}
+	// t.Theme() учитывает ThemeOverride вокруг диалога; theme.Color —
+	// глобальная и override проигнорирует. Variant обязателен: без него
+	// на светлой теме будет тёмный фон.
+	th := t.Theme()
+	v := fyne.CurrentApp().Settings().ThemeVariant()
+	rect := canvas.NewRectangle(th.Color(theme.ColorNameOverlayBackground, v))
+	rect.CornerRadius = th.Size(theme.SizeNameDialogRadius)
+	return &themedBackgroundRenderer{
+		theme:   th,
+		v:       v,
+		rect:    rect,
+		objects: []fyne.CanvasObject{rect},
+	}
 }
 
 type themedBackgroundRenderer struct {
+	theme   fyne.Theme
+	v       fyne.ThemeVariant
 	rect    *canvas.Rectangle
 	objects []fyne.CanvasObject
 }
@@ -225,10 +245,14 @@ func (renderer *themedBackgroundRenderer) Objects() []fyne.CanvasObject {
 	return renderer.objects
 }
 
+// xssyne
 func (renderer *themedBackgroundRenderer) Refresh() {
-	r, g, b, _ := col.ToNRGBA(theme.Color(theme.ColorNameOverlayBackground))
-	bg := &color.NRGBA{R: r, G: g, B: b, A: 230}
-	renderer.rect.FillColor = bg
+	// Обновляем закэшированную тему на случай смены (или нового override).
+	renderer.theme = fyne.CurrentApp().Settings().Theme()
+	renderer.v = fyne.CurrentApp().Settings().ThemeVariant()
+	r, g, b, _ := col.ToNRGBA(renderer.theme.Color(theme.ColorNameOverlayBackground, renderer.v))
+	renderer.rect.FillColor = &color.NRGBA{R: r, G: g, B: b, A: 230}
+	renderer.rect.Refresh()
 }
 
 // ===============================================================

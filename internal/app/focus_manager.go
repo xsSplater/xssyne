@@ -51,14 +51,17 @@ func (f *FocusManager) Focus(obj fyne.Focusable) bool {
 			return false
 		}
 		if hidden {
-			return true
+			// Скрытый виджет не получает фокус. Возвращаем false —
+			// пусть caller знает, что фокус не применён, и не считает
+			// состояние консистентным.
+			return false
 		}
 		if dis, ok := obj.(fyne.Disableable); ok && dis.Disabled() {
 			type selectableText interface {
 				SelectedText() string
 			}
 			if _, isSelectableText := obj.(selectableText); !isSelectableText || fyne.CurrentDevice().IsMobile() {
-				return true
+				return false
 			}
 		}
 	}

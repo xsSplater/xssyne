@@ -1,3 +1,5 @@
+// xssyne/container/tabs.go
+
 package container
 
 import (
@@ -229,23 +231,30 @@ func selectItem(t baseTabs, item *TabItem) {
 	}
 }
 
+// xssyne
 func setItems(t baseTabs, items []*TabItem) {
 	if build.HasHints && mismatchedTabItems(items) {
 		internal.LogHint("Tab items should all have the same type of content (text, icons or both)")
 	}
+	// Захватываем старое состояние ДО подмены списка, чтобы корректно
+	// уведомить OnUnselected при полной очистке.
+	oldItems := t.items()
+	oldSelected := t.selected()
 	t.setItems(items)
-	selected := t.selected()
 	count := len(items)
 	switch {
 	case count == 0:
-		// No items available to be selected
-		selectIndex(t, -1) // Unsure OnUnselected gets called if applicable
+		// Раньше здесь вызывался selectIndex(t, -1), но его internal
+		// guard (selected < len(items)) срабатывал на уже пустом
+		// списке и OnUnselected не получал вызов. Уведомляем явно.
+		if f := t.onUnselected(); f != nil && oldSelected >= 0 && oldSelected < len(oldItems) {
+			f(oldItems[oldSelected])
+		}
 		t.setSelected(-1)
-	case selected < 0:
-		// Current is first tab item
+		t.Refresh()
+	case oldSelected < 0:
 		selectIndex(t, 0)
-	case selected >= count:
-		// Current doesn't exist, select last tab
+	case oldSelected >= count:
 		selectIndex(t, count-1)
 	}
 }
@@ -706,26 +715,37 @@ func (r *tabButtonRenderer) Refresh() {
 	th := r.button.Theme()
 	v := fyne.CurrentApp().Settings().ThemeVariant()
 
-	if r.button.hovered && !r.button.Disabled() {
+	r.background.CornerRadius = th.Size(theme.SizeNameSelectionRadius)
+
+	if r.button.Disabled() {
+		r.background.FillColor = th.Color(theme.ColorNameDisabledButton, v)
+		r.background.Show()
+	} else if r.button.importance == widget.HighImportance {
+		// ВЫБРАННАЯ ВКЛАДКА - ЗЕЛЕНОВАТЫЙ ФОН
+		r.background.FillColor = th.Color(theme.ColorNamePrimary, v)
+		r.background.Show()
+	} else if r.button.hovered {
 		r.background.FillColor = th.Color(theme.ColorNameHover, v)
-		r.background.CornerRadius = th.Size(theme.SizeNameSelectionRadius)
 		r.background.Show()
 	} else {
-		r.background.Hide()
+		// НЕВЫБРАННАЯ ВКЛАДКА - ТЕМНЫЙ ФОН (как сейчас)
+		r.background.FillColor = th.Color(theme.ColorNameButton, v)
+		r.background.Show()
 	}
 	r.background.Refresh()
 
 	r.label.Text = r.button.text
 	r.label.Alignment = r.button.textAlignment
-	if !r.button.Disabled() {
-		if r.button.importance == widget.HighImportance {
-			r.label.Color = th.Color(theme.ColorNamePrimary, v)
-		} else {
-			r.label.Color = th.Color(theme.ColorNameForeground, v)
-		}
-	} else {
+
+	if r.button.Disabled() {
 		r.label.Color = th.Color(theme.ColorNameDisabled, v)
+	} else if r.button.importance == widget.HighImportance {
+		// Текст на зеленом фоне должен быть контрастным (белым)
+		r.label.Color = th.Color(theme.ColorNameForegroundOnPrimary, v)
+	} else {
+		r.label.Color = th.Color(theme.ColorNameForeground, v)
 	}
+
 	r.label.TextSize = th.Size(theme.SizeNameText)
 	if isMobile(r.button.tabs) {
 		r.label.TextSize = th.Size(theme.SizeNameCaptionText)
@@ -739,11 +759,8 @@ func (r *tabButtonRenderer) Refresh() {
 	r.icon.Resource = r.button.icon
 	if r.icon.Resource != nil {
 		r.icon.Show()
+		// Убираем принудительную покраску иконки в зеленый, так как фон теперь зеленый
 		switch res := r.icon.Resource.(type) {
-		case *theme.ThemedResource:
-			if r.button.importance == widget.HighImportance {
-				r.icon.Resource = theme.NewPrimaryThemedResource(res)
-			}
 		case *theme.PrimaryThemedResource:
 			if r.button.importance != widget.HighImportance {
 				r.icon.Resource = res.Original()

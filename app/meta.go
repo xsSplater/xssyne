@@ -3,6 +3,8 @@
 package app
 
 import (
+	"sync"
+
 	"fyne.io/fyne/v2"
 )
 
@@ -29,9 +31,15 @@ func SetMetadata(m fyne.AppMetadata) {
 	}
 }
 
+// metaCheckOnce гарантирует, что поиск FyneApp.toml выполняется максимум
+// один раз за время жизни процесса. В dev-режиме без файла Metadata()
+// вызывается часто (Quit, Preferences, notificationAppID, ...) и каждый
+// раз ходил на диск.
+var metaCheckOnce sync.Once
+
 func (a *fyneApp) Metadata() fyne.AppMetadata {
 	if meta.ID == "" && meta.Name == "" {
-		checkLocalMetadata()
+		metaCheckOnce.Do(checkLocalMetadata)
 	}
 
 	return meta

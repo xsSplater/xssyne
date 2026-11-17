@@ -1,3 +1,5 @@
+// xssyne/canvas/rectangle.go
+
 package canvas
 
 import (

@@ -71,7 +71,7 @@ func LoadResourceFromPath(path string) (Resource, error) {
 
 // LoadResourceFromURLString creates a new [StaticResource] in memory using the body of the specified URL.
 func LoadResourceFromURLString(urlStr string) (Resource, error) {
-	res, err := http.Get(urlStr) //gosec:disable G107 -- applying security measures to the URL is the caller’s responsibility
+	res, err := http.Get(urlStr) //gosec:disable G107 -- applying security measures to the URL is the caller's responsibility
 	if err != nil {
 		return nil, err
 	}
@@ -89,29 +89,36 @@ func LoadResourceFromURLString(urlStr string) (Resource, error) {
 // CacheResourceFromURLString creates a new [StaticResource] in memory using the body of the specified URL.
 // It also adds the content to our cache so that future requests for this resource will be available locally
 // instead of downloaded from the URL.
-//
-// Since: 2.8
-func CacheResourceFromURLString(urlStr string) (Resource, error) {
-	cache := CurrentApp().Cache()
-	if read, err := cache.Read(urlStr); err == nil {
-		name := filepath.Base(urlStr)
+// xssyne
+func CacheResourceFromURLString(urlStr string) (res Resource, err error) {
+	app := CurrentApp()
+	if app == nil {
+		// Без приложения кеша нет — просто грузим по сети.
+		return LoadResourceFromURLString(urlStr)
+	}
+	cache := app.Cache()
+	if cache == nil {
+		return LoadResourceFromURLString(urlStr)
+	}
 
-		data, err := io.ReadAll(read)
+	if read, rerr := cache.Read(urlStr); rerr == nil {
+		name := filepath.Base(urlStr)
+		data, derr := io.ReadAll(read)
 		_ = read.Close()
-		if err != nil {
-			return nil, err
+		if derr != nil {
+			return nil, derr
 		}
 		return NewStaticResource(name, data), nil
 	}
 
-	res, err := LoadResourceFromURLString(urlStr)
-	if err != nil {
-		return nil, err
-	}
-
-	write, err := cache.Write(urlStr)
+	res, err = LoadResourceFromURLString(urlStr)
 	if err != nil {
 		return res, err
+	}
+
+	write, werr := cache.Write(urlStr)
+	if werr != nil {
+		return res, werr
 	}
 	defer func() {
 		if cerr := write.Close(); cerr != nil && err == nil {
@@ -120,21 +127,16 @@ func CacheResourceFromURLString(urlStr string) (Resource, error) {
 	}()
 
 	data := res.Content()
-	for {
+	for len(data) > 0 {
 		n, werr := write.Write(data)
 		if werr != nil {
 			return res, werr
 		}
-		if n == 0 {
-			// Writer нарушил контракт: не записал ничего, но и ошибки не вернул.
-			// Без этой проверки получим бесконечный цикл.
-			return res, fmt.Errorf("cache write returned 0 bytes without error")
-		}
-		if n >= len(data) {
-			break
+		if n <= 0 {
+			return res, fmt.Errorf("cache write returned %d bytes without error", n)
 		}
 		data = data[n:]
 	}
 
-	return res, err
+	return res, nil
 }

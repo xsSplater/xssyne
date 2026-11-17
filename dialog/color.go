@@ -1,3 +1,5 @@
+// xssyne/dialog/color.go
+
 package dialog
 
 import (
@@ -102,7 +104,12 @@ func (p *ColorPickerDialog) selectColor(c color.Color) {
 	p.updateUI()
 }
 
+// xssyne
 func (p *ColorPickerDialog) updateUI() {
+	// Запоминаем, был ли диалог видим до перестройки. p.create()
+	// пересоздаёт p.win с нуля, и без явного Show() диалог
+	// останется скрытым после Refresh().
+	wasVisible := p.win != nil && p.win.Visible()
 	if w := p.win; w != nil {
 		w.Hide()
 	}
@@ -141,6 +148,9 @@ func (p *ColorPickerDialog) updateUI() {
 	} else {
 		p.content = container.NewVBox(p.createSimplePickers()...)
 		p.create(container.NewGridWithColumns(1, p.dismiss))
+	}
+	if wasVisible {
+		p.win.Show()
 	}
 }
 

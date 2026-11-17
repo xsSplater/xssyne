@@ -1,3 +1,5 @@
+// xssyne/widget/markdown.go
+
 package widget
 
 import (
@@ -84,11 +86,10 @@ func renderNode(source []byte, n ast.Node, quotingDepth int, listDepth int) ([]R
 		return result, err
 	case *ast.TextBlock:
 		if c, ok := t.FirstChild().(*ast2.TaskCheckBox); ok {
-			child := c.NextSibling()
-			text := ""
-			if child != nil {
-				text = string(child.(*ast.Text).Value(source))
-			}
+			// Остаток содержимого может быть отформатирован (emphasis, ссылки и т.д.).
+			// forceIntoText безопасно рекурсивно собирает весь текст без type assertion.
+			// xssyne
+			text := forceIntoText(source, t)
 			return []RichTextSegment{&CheckBoxSegment{Text: decodeText(text), Checked: c.IsChecked}}, nil
 		}
 		return renderChildren(source, n, quotingDepth, listDepth)

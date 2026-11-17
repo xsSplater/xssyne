@@ -14,6 +14,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/internal"
 	"fyne.io/fyne/v2/internal/app"
+	"fyne.io/fyne/v2/internal/async"
 	"fyne.io/fyne/v2/internal/build"
 	intRepo "fyne.io/fyne/v2/internal/repository"
 	"fyne.io/fyne/v2/internal/scheduler"
@@ -81,11 +82,13 @@ func (a *fyneApp) NewWindow(title string) fyne.Window {
 }
 
 func (a *fyneApp) Run() {
-	go a.lifecycle.RunEventQueue(a.driver.DoFromGoroutine)
+	// Захватываем ID главной горутины ДО запуска event loop.
+	// Без этого IsMainGoroutine() всегда false (goroutineID никогда
+	// не 0), а EnsureMain на главной горутине уйдёт в DoAndWait
+	// и повесит приложение.
+	async.SetMainGoroutine()
 
-	if !a.driver.Device().IsMobile() {
-		a.settings.watchSettings()
-	}
+	go a.lifecycle.RunEventQueue(a.driver.DoFromGoroutine)
 
 	if !build.MigratedToFyneDo() {
 		log.Println("*** This application has not been migrated to the fyne.Do threading model ***")
@@ -95,13 +98,20 @@ func (a *fyneApp) Run() {
 	a.driver.Run()
 }
 
+// xssyne
 func (a *fyneApp) Quit() {
 	for _, window := range a.driver.AllWindows() {
 		window.Close()
 	}
 
-	a.driver.Quit()
+	// Сначала гасим то, что крутит фоновые горутины,
+	// чтобы после остановки event loop и driver.Quit() ничего не «дрожало».
+	if a.scheduler != nil {
+		a.scheduler.Stop()
+	}
 	a.settings.stopWatching()
+	a.lifecycle.DestroyEventQueue()
+	a.driver.Quit()
 }
 
 func (a *fyneApp) Driver() fyne.Driver {
@@ -147,7 +157,7 @@ func (a *fyneApp) Clipboard() fyne.Clipboard {
 // New returns a new application instance with the default driver and no unique ID (unless specified in FyneApp.toml)
 func New() fyne.App {
 	if meta.ID == "" {
-		checkLocalMetadata() // if no ID passed, check if it was in toml
+		metaCheckOnce.Do(checkLocalMetadata)
 		if meta.ID == "" {
 			internal.LogHint("Applications should be created with a unique ID using app.NewWithID()")
 		}

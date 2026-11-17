@@ -1,14 +1,8 @@
-//go:build !darwin
+//go:build linux || windows
 
 // xssyne/internal/driver/glfw/window_notdarwin.go
 
 package glfw
-
-import "time"
-
-// desktopDefaultDoubleTapDelay is a fallback double tap delay for systems
-// that do not provide a system-specific value.
-const desktopDefaultDoubleTapDelay = 300 * time.Millisecond
 
 func (w *window) doSetFullScreen(full bool) {
 	monitor := w.getMonitorForWindow()

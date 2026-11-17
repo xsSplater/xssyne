@@ -1,3 +1,5 @@
+// xssyne/widget/slider.go
+
 package widget
 
 import (
@@ -299,9 +301,14 @@ func (s *Slider) updateValue(ratio float64) {
 	s.clampValueToRange()
 }
 
+// xssyne
 // SetValue updates the value of the slider and clamps the value to be within the range.
 func (s *Slider) SetValue(value float64) {
-	if s.Value == value {
+	// Строгое == не работает при накоплении float-погрешности (в цикле
+	// SetValue(v + step)). almostEqual использует Step/2 как допуск,
+	// а при Step == 0 эквивалентно точному ==, так что поведение
+	// для слайдеров без шага не меняется.
+	if s.almostEqual(s.Value, value) {
 		return
 	}
 

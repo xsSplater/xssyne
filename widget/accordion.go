@@ -1,3 +1,5 @@
+// xssyne/widget/accordion.go
+
 package widget
 
 import (
@@ -136,8 +138,11 @@ type accordionRenderer struct {
 	minSizeCache fyne.Size
 }
 
+// xssyne
 func (r *accordionRenderer) Layout(size fyne.Size) {
-	r.updateObjects()
+	// updateObjects вызывается из Refresh; здесь только геометрия.
+	// Раньше SetObjects звался дважды на каждый Refresh — лишняя
+	// работа и shuffle в BaseRenderer.
 	th := r.container.Theme()
 	pad := th.Size(theme.SizeNamePadding)
 	separator := th.Size(theme.SizeNameSeparatorThickness)

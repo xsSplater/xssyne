@@ -27,7 +27,7 @@ import (
 
 const (
 	dragMoveThreshold = 2 // how far can we move before it is a drag
-	windowIconSize	  = 256
+	windowIconSize    = 256
 )
 
 func (w *window) Title() string {
@@ -392,22 +392,30 @@ func (w *window) processMouseMoved(xpos float64, ypos float64) {
 		}
 	}
 
+	// xssyne
 	if obj != nil && !w.objIsDragged(obj) {
 		ev := &desktop.MouseEvent{Button: mouseButton}
 		ev.AbsolutePosition = mousePos
 		ev.Position = pos
 
-		// === НОВОЕ: проверка тултипа через анонимный интерфейс ===
+		// Tooltip: если объект под курсором НЕ реализует ToolTip() —
+		// это тоже повод скрыть старый tooltip. Раньше Hide()
+		// вызывался только когда у объекта есть метод и он вернул "" —
+		// при переходе на контейнер/примитив старый tooltip висел вечно.
+		tip := ""
 		if tootiper, ok := obj.(interface{ ToolTip() string }); ok {
-			if tip := tootiper.ToolTip(); tip != "" {
-				if wid, ok := obj.(fyne.Widget); ok {
-					w.canvas.TooltipManager().Show(wid, tip, mousePos)
-				}
+			tip = tootiper.ToolTip()
+		}
+		if tip != "" {
+			if wid, ok := obj.(fyne.Widget); ok {
+				w.canvas.TooltipManager().Show(wid, tip, mousePos)
 			} else {
+				// ToolTip() есть у не-виджета (например, на canvas.Text) — не показываем.
 				w.canvas.TooltipManager().Hide()
 			}
+		} else {
+			w.canvas.TooltipManager().Hide()
 		}
-		// ========================================================
 
 		if hovered, ok := obj.(desktop.Hoverable); ok {
 			if hovered == mouseOver {
@@ -509,14 +517,14 @@ func (w *window) processMouseClicked(button desktop.MouseButton, action action, 
 		return false
 	})
 	ev := &fyne.PointEvent{
-		Position:		  pos,
+		Position:         pos,
 		AbsolutePosition: mousePos,
 	}
 
 	coMouse := co
 	if wid, ok := co.(desktop.Mouseable); ok {
 		mev := &desktop.MouseEvent{
-			Button:	  button,
+			Button:   button,
 			Modifier: modifiers,
 		}
 		mev.Position = ev.Position
@@ -793,12 +801,12 @@ func (w *window) processCharInput(char rune) {
 
 func (w *window) processFocused(focus bool) {
 	if focus {
-		if curWindow == nil {
+		if w.driver.focusedWindow == nil {
 			if f := fyne.CurrentApp().Lifecycle().(*app.Lifecycle).OnEnteredForeground(); f != nil {
 				f()
 			}
 		}
-		curWindow = w
+		w.driver.focusedWindow = w
 		w.canvas.FocusGained()
 
 		if build.HasNativeMenu {
@@ -818,11 +826,11 @@ func (w *window) processFocused(focus bool) {
 		w.menuDeactivationPending = desktop.KeyNone
 
 		// check whether another window was focused or not
-		if curWindow != w {
+		if w.driver.focusedWindow != w {
 			return
 		}
 
-		curWindow = nil
+		w.driver.focusedWindow = nil
 		if f := fyne.CurrentApp().Lifecycle().(*app.Lifecycle).OnExitedForeground(); f != nil {
 			f()
 		}

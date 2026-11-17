@@ -1,3 +1,5 @@
+// xssyne/container/split.go
+
 package container
 
 import (
@@ -293,6 +295,7 @@ func (d *divider) DragEnd() {
 	d.startDragOff = nil
 }
 
+// xssyne
 func (d *divider) Dragged(e *fyne.DragEvent) {
 	if d.startDragOff == nil {
 		d.currentDragPos = d.Position().Add(e.Position)
@@ -306,11 +309,20 @@ func (d *divider) Dragged(e *fyne.DragEvent) {
 	var offset, leadingRatio, trailingRatio float64
 	if d.split.Horizontal {
 		widthFree := float64(d.split.Size().Width - dividerThickness(d))
+		// При очень узком окне (свёрнутом, например) widthFree <= 0,
+		// старое деление давало NaN, который не отсекался clamps'ами
+		// ниже (NaN < x и NaN > x — оба false) и уходил в Resize.
+		if widthFree <= 0 {
+			return
+		}
 		leadingRatio = float64(d.split.Leading.MinSize().Width) / widthFree
 		trailingRatio = 1. - (float64(d.split.Trailing.MinSize().Width) / widthFree)
 		offset = float64(x-d.startDragOff.X) / widthFree
 	} else {
 		heightFree := float64(d.split.Size().Height - dividerThickness(d))
+		if heightFree <= 0 {
+			return
+		}
 		leadingRatio = float64(d.split.Leading.MinSize().Height) / heightFree
 		trailingRatio = 1. - (float64(d.split.Trailing.MinSize().Height) / heightFree)
 		offset = float64(y-d.startDragOff.Y) / heightFree

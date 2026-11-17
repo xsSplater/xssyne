@@ -1,5 +1,7 @@
 //go:build !migrated_fynedo
 
+// xssyne/internal/async/queue.go
+
 package async
 
 import (
@@ -78,6 +80,10 @@ func (q *CanvasObjectQueue) Out() fyne.CanvasObject {
 				v := firstnext.v
 				if q.head.CompareAndSwap(first, firstnext) {
 					q.len.Add(^uint64(0))
+					// first выведен из очереди — обнуляем ссылку, чтобы GC мог
+					// освободить CanvasObject, пока first лежит в пуле. Иначе
+					// один объект висит между Out и следующим In.
+					first.v = nil
 					itemCanvasObjectPool.Put(first)
 					return v
 				}

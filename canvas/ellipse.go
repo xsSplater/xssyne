@@ -1,3 +1,5 @@
+// xssyne/canvas/ellipse.go
+
 package canvas
 
 import (
@@ -45,18 +47,18 @@ func (e *Ellipse) Refresh() {
 	Refresh(e)
 }
 
+// xssfyne
 // Resize on a ellipse updates the new size of this object.
-// If it has a stroke width this will cause it to Refresh.
 func (e *Ellipse) Resize(s fyne.Size) {
 	if s == e.Size() {
 		return
 	}
 
 	e.baseObject.Resize(s)
-	if e.StrokeWidth == 0 {
-		return
-	}
 
+	// Раньше здесь стоял `if e.StrokeWidth == 0 { return }`, из-за чего
+	// заливка (fill) не перерисовывалась после resize — визуально эллипс
+	// застревал на старом размере, пока что-то ещё не дёрнет repaint.
 	Refresh(e)
 }
 

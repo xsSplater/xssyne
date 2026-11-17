@@ -9,7 +9,7 @@ import (
 
 // LogHint reports a developer hint that should be followed to improve their app.
 func LogHint(reason string) {
-	log.Println("Fyne hint: ", reason)
+	log.Println("xssyne hint: ", reason)
 
 	_, file, line, ok := runtime.Caller(2)
 	if ok {

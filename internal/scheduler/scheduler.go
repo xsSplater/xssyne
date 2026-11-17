@@ -5,6 +5,9 @@
 // survive an app restart. When the scheduler is started any entries whose
 // delivery time has already passed are fired immediately; future entries are
 // re-armed with a [time.Timer].
+
+// xssyne/internal/scheduler/scheduler.go
+
 package scheduler
 
 import (
@@ -85,6 +88,33 @@ func (s *Scheduler) Start() {
 	for _, e := range due {
 		s.deliver(e)
 	}
+}
+
+// xssyne
+// Stop cancels all armed timers and marks the scheduler as stopped.
+// Pending entries remain in memory and in the cache so that a subsequent
+// Start re-arms them. A notification whose timer has already fired is
+// still delivered (its goroutine already owns the entry by then).
+//
+// Calling Stop more than once, or before Start, is a no-op.
+func (s *Scheduler) Stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.started {
+		return
+	}
+	s.started = false
+
+	for id, t := range s.timers {
+		t.Stop()
+		delete(s.timers, id)
+	}
+
+	// Explicit re-persist: если между последним Schedule и Stop произошёл
+	// отказ записи в кеш, даём Stop ещё один шанс сохранить pending entries.
+	// Ошибку игнорируем — Stop не должен фейлиться из-за кеша.
+	_ = s.saveLocked()
 }
 
 // Schedule queues a notification for delivery at the given time, returning the

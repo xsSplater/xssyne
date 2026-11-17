@@ -1,11 +1,15 @@
 //go:build accessibility && windows
 
+// xssyne/internal/driver/glfw/accessibility_windows.c
+
 #define CINTERFACE
 #define COBJMACROS
 #include "accessibility_windows.h"
 #include <windows.h>
 #include <ole2.h>
 #include <oleacc.h>
+
+static int g_windowCount = 0;
 
 // ============================================================
 // UIA type definitions (manual, for MinGW/CGo compatibility)
@@ -657,6 +661,8 @@ void WinAccessibilitySetWindow(void* hwnd) {
     g_root->hwnd = h;
 
     g_origWndProc = (WNDPROC)SetWindowLongPtrW(h, GWLP_WNDPROC, (LONG_PTR)AccessibilityWndProc);
+
+    g_windowCount++;
 }
 
 void WinAccessibilityAddElement(const char* name, WinAccessibilityRole role,
@@ -749,6 +755,11 @@ void WinAccessibilityUpdate(void) {
 }
 
 void WinAccessibilityCleanup(void) {
+    g_windowCount--;
+    if (g_windowCount > 0) {
+        return; // другие окна ещё живы — глобал нужен
+    }
+
     if (g_hwnd && g_origWndProc) {
         SetWindowLongPtrW(g_hwnd, GWLP_WNDPROC, (LONG_PTR)g_origWndProc);
         g_origWndProc = NULL;

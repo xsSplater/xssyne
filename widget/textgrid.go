@@ -1,3 +1,5 @@
+// xssyne/widget/textgrid.go
+
 package widget
 
 import (
@@ -400,23 +402,27 @@ func (t *TextGrid) ensureCells(row, col int) {
 	}
 }
 
+// xssyne
 func (t *TextGrid) parseRows(text string) []TextGridRow {
 	lines := strings.Split(text, "\n")
 	rows := make([]TextGridRow, len(lines))
 	for i, line := range lines {
 		cells := make([]TextGridCell, 0, len(line))
-		next := 0
-		col := 0
 		for _, r := range line {
 			cells = append(cells, TextGridCell{Rune: r})
 			if r == '\t' {
-				col = len(cells)
-				next = nextTab(col-1, t.tabWidth())
-			} else {
-				next = col - 1 + runewidth.StringWidth(string(r))
-			}
-			for i := col; i < next; i++ {
-				cells = append(cells, TextGridCell{Rune: ' '})
+				// Таб занимает одну ячейку, но визуально сдвигает до
+				// следующей tab-позиции — досыпаем пробелами.
+				next := nextTab(len(cells)-1, t.tabWidth())
+				for len(cells) < next {
+					cells = append(cells, TextGridCell{Rune: ' '})
+				}
+			} else if w := runewidth.StringWidth(string(r)); w > 1 {
+				// Символы с шириной > 1 (CJK, эмодзи) занимают несколько
+				// визуальных колонок — досыпаем пробелами.
+				for j := 1; j < w; j++ {
+					cells = append(cells, TextGridCell{Rune: ' '})
+				}
 			}
 		}
 		rows[i] = TextGridRow{Cells: cells}

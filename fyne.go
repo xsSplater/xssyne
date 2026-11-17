@@ -7,9 +7,9 @@
 //
 //	package main
 //
-//	import "fyne.io/fyne/v2/app"
-//	import "fyne.io/fyne/v2/container"
-//	import "fyne.io/fyne/v2/widget"
+//	import "xssyne.io/xssyne/v2/app"
+//	import "xssyne.io/xssyne/v2/container"
+//	import "xssyne.io/xssyne/v2/widget"
 //
 //	func main() {
 //		a := app.New()
@@ -25,4 +25,7 @@
 //
 //		w.ShowAndRun()
 //	}
+
+// xssyne/fyne.go
+
 package fyne // import "fyne.io/fyne/v2"

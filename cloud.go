@@ -1,7 +1,9 @@
+// xssyne/cloud.go
+
 package fyne
 
 // CloudProvider specifies the identifying information of a cloud provider.
-// This information is mostly used by the [fyne.io/cloud.ShowSettings] user flow.
+// This information is mostly used by the cloud settings user flow.
 //
 // Since: 2.3
 type CloudProvider interface {

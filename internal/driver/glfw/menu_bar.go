@@ -159,11 +159,23 @@ type menuBarRenderer struct {
 	cont       *fyne.Container
 }
 
+// xssyne
 func (r *menuBarRenderer) Layout(size fyne.Size) {
 	minSize := r.MinSize()
-	if size.Height != minSize.Height || size.Width < minSize.Width {
-		r.b.Resize(fyne.NewSize(fyne.Max(size.Width, minSize.Width), minSize.Height))
-		return
+	// Fyne не даст виджету ужаться ниже MinSize. Приводим size
+	// к минимуму локально, чтобы не звать Resize внутри Layout
+	// (это провоцирует повторный проход).
+	if size.Height < minSize.Height {
+		size.Height = minSize.Height
+	}
+	if size.Width < minSize.Width {
+		size.Width = minSize.Width
+	}
+
+	if r.b.active {
+		r.underlay.Resize(r.b.canvas.Size())
+	} else {
+		r.underlay.Resize(fyne.NewSize(0, 0))
 	}
 
 	if r.b.active {

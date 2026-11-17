@@ -1,4 +1,4 @@
-//go:build wasm || (!linux && !freebsd && !openbsd && !netbsd) || (x11 && !wayland)
+//go:build windows || (linux && x11)
 
 package glfw
 

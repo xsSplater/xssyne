@@ -1,3 +1,5 @@
+// xssyne/internal/widget/base.go
+
 package widget
 
 import (
@@ -83,16 +85,14 @@ func (w *Base) Visible() bool {
 // Show this widget so it becomes visible
 func (w *Base) Show() {
 	if !w.hidden {
-		return // Visible already
+		return
 	}
-
 	w.hidden = false
-
 	impl := w.super()
 	if impl == nil {
 		return
 	}
-	impl.Refresh()
+	canvas.Refresh(impl)
 }
 
 // Hide this widget so it is no longer visible
@@ -117,7 +117,11 @@ func (w *Base) Refresh() {
 		return
 	}
 
-	cache.Renderer(impl).Refresh()
+	r := cache.Renderer(impl)
+	if r == nil {
+		return
+	}
+	r.Refresh()
 }
 
 // super will return the actual object that this represents.

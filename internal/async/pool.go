@@ -1,3 +1,5 @@
+// xssyne/internal/async/pool.go
+
 package async
 
 import "sync"
@@ -20,7 +22,13 @@ func (p *Pool[T]) Get() T {
 	if !ok && p.New != nil {
 		return p.New()
 	}
-
+	if !ok {
+		// sync.Pool пуст, а New не задан — возвращаем zero value
+		// вместо паники. Раньше x.(T) на nil-интерфейсе с конкретным
+		// T паниковал.
+		var zero T
+		return zero
+	}
 	return x
 }
 

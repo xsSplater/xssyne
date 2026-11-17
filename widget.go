@@ -1,3 +1,5 @@
+// xssyne/widget.go
+
 package fyne
 
 // Widget defines the standard behaviours of any widget. This extends

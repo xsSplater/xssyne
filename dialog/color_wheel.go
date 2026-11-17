@@ -1,3 +1,5 @@
+// xssyne/dialog/color_wheel.go
+
 package dialog
 
 import (
@@ -195,6 +197,7 @@ func (r *colorWheelRenderer) MinSize() fyne.Size {
 	return r.raster.MinSize().Max(fyne.NewSize(128, 128))
 }
 
+// xssyne
 func (r *colorWheelRenderer) Refresh() {
 	s := r.area.Size()
 	if s.IsZero() {
@@ -202,9 +205,13 @@ func (r *colorWheelRenderer) Refresh() {
 	} else {
 		r.Layout(s)
 	}
-	r.x.StrokeColor = theme.Color(theme.ColorNameForeground)
+	// theme.Color — глобальная тема; r.area.Theme() учитывает
+	// ThemeOverride вокруг диалога и Variant.
+	th := r.area.Theme()
+	v := fyne.CurrentApp().Settings().ThemeVariant()
+	r.x.StrokeColor = th.Color(theme.ColorNameForeground, v)
 	r.x.Refresh()
-	r.y.StrokeColor = theme.Color(theme.ColorNameForeground)
+	r.y.StrokeColor = th.Color(theme.ColorNameForeground, v)
 	r.y.Refresh()
 	r.raster.Refresh()
 	r.background.Refresh()

@@ -109,20 +109,48 @@ func (s *settings) AddListener(listener func(fyne.Settings)) {
 	s.listeners = append(s.listeners, listener)
 }
 
+// xssyne
+// apply рассылает текущее состояние всем слушателям.
+//
+// Для канальных слушателей действует политика "latest wins":
+//  1. Пробуем положить новое значение неблокирующе.
+//  2. Если не влезло — неблокирующе выкачиваем старое и пробуем ещё раз.
+//     Слушатель получит новое состояние, а не устаревшее из буфера.
+//  3. Только если и это не сработало (слушатель вообще не читает) —
+//     спавним горутину, чтобы попытаться ещё раз, но с таймаутом.
+//
+// Это устраняет goroutine-per-listener в 99% случаев (буфер канала
+// ёмкостью >=1 теперь обрабатывается без аллокации горутины) и
+// гарантирует, что слушатель видит актуальное состояние, а не устаревшее.
 func (s *settings) apply() {
 	s.changeListeners.Range(func(listener chan fyne.Settings, _ bool) bool {
+		// Попытка №1: неблокирующая отправка.
 		select {
 		case listener <- s:
+			return true
 		default:
-			l := listener
-			go func() {
-				select {
-				case l <- s:
-				case <-time.After(time.Second):
-					// слушатель не читает — не держим горутину вечно
-				}
-			}()
 		}
+
+		// Попытка №2: выбросить устаревшее значение и отправить новое.
+		select {
+		case <-listener:
+		default:
+		}
+		select {
+		case listener <- s:
+			return true
+		default:
+		}
+
+		// Слушатель вообще не читает — спасаем горутиной с таймаутом.
+		l := listener
+		go func() {
+			select {
+			case l <- s:
+			case <-time.After(time.Second):
+				// слушатель не читает — не держим горутину вечно
+			}
+		}()
 		return true
 	})
 

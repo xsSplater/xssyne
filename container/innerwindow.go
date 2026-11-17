@@ -1,3 +1,5 @@
+// xssyne/container/innerwindow.go
+
 package container
 
 import (
@@ -152,6 +154,7 @@ func (w *InnerWindow) SetActive(active bool) {
 	w.Refresh()
 }
 
+// xssyne
 // SetContent мог паниковать
 func (w *InnerWindow) SetContent(obj fyne.CanvasObject) {
 	if w.Content == nil || len(w.Content.Objects) == 0 {
@@ -160,7 +163,8 @@ func (w *InnerWindow) SetContent(obj fyne.CanvasObject) {
 		w.Content.Objects[0] = obj
 	}
 
-	w.Content.Refresh()
+	// Пересчитываем MinSize и layout окна — контент изменился.
+	w.Refresh()
 }
 
 // SetMaximized tells the window if the maximized state should be set or not.
@@ -353,8 +357,9 @@ func newDraggableCorner(w *InnerWindow) *draggableCorner {
 	return d
 }
 
+// xssyne
 func (c *draggableCorner) CreateRenderer() fyne.WidgetRenderer {
-	prop := canvas.NewImageFromResource(fyne.CurrentApp().Settings().Theme().Icon(theme.IconNameDragCornerIndicator))
+	prop := canvas.NewImageFromResource(c.Theme().Icon(theme.IconNameDragCornerIndicator))
 	prop.SetMinSize(fyne.NewSquareSize(16))
 	return widget.NewSimpleRenderer(prop)
 }

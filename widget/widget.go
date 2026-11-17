@@ -1,4 +1,6 @@
 // Package widget defines the UI widgets within the Fyne toolkit.
+// xssyne/widget/widget.go
+
 package widget // import "fyne.io/fyne/v2/widget"
 
 import (
@@ -227,12 +229,22 @@ func (*noCopy) Lock() {}
 
 func (*noCopy) Unlock() {}
 
+// xssyne
 // SetToolTip stores a tooltip text on the widget.
 // The tooltip text is not wired into any automatic popup mechanism by the
 // widget itself; an external tooltip.Manager may read it via ToolTip().
 // Must be called on the main goroutine (Fyne v2.6+ contract).
 func (bw *BaseWidget) SetToolTip(text string) {
+	if bw.toolTipText == text {
+		return
+	}
 	bw.toolTipText = text
+
+	// Дёргаем перерисовку: внешний tooltip.Manager читает ToolTip()
+	// при hover-check, и без repaint может не заметить смену текста.
+	if impl := bw.super(); impl != nil {
+		canvas.Refresh(impl)
+	}
 }
 
 // ToolTip returns the tooltip text previously stored via SetToolTip.

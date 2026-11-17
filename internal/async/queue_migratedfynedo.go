@@ -1,9 +1,13 @@
 //go:build migrated_fynedo
 
+// xssyne/internal/async/queue_migratedfynedo.go
+
 package async
 
 import "fyne.io/fyne/v2"
 
+// defaultQueueCapacity must be > 0 — ring buffer's modulo operation
+// relies on a non-zero length and the initial allocation uses this value.
 const defaultQueueCapacity = 64
 
 // CanvasObjectQueue represents a single-threaded queue for managing canvas objects using a ring buffer.

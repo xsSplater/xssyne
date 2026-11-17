@@ -1,6 +1,6 @@
-//go:build !ci && !android && !ios && !mobile && !tamago && !noos && !tinygo
+//go:build (windows || linux) && !ci && !tinygo
 
-// xssyne/app/app_gl.go
+// xssyne/app/app_desktop.go
 
 package app
 

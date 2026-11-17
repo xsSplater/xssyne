@@ -1,4 +1,4 @@
-//go:build (!linux || (x11 && !wayland) || (!x11 && wayland)) && !wasm && !test_web_driver
+//go:build windows || (linux && ((x11 && !wayland) || (!x11 && wayland)))
 
 package glfw
 

@@ -1,3 +1,5 @@
+// xssyne/settings.go
+
 package fyne
 
 // BuildType defines different modes that an application can be built using.

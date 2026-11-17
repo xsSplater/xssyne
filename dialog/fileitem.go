@@ -1,3 +1,5 @@
+// xssyne/dialog/fileitem.go
+
 package dialog
 
 import (
@@ -42,17 +44,17 @@ func (i *fileDialogItem) CreateRenderer() fyne.WidgetRenderer {
 	over := &canvas.Image{}
 
 	return &fileItemRenderer{
-		item:         i,
-		icon:         icon,
-		text:         text,
-		over:         over,
-		objects:      []fyne.CanvasObject{icon, text, over},
-		fileTextSize: widget.NewLabel("M\nM").MinSize().Height, // cache two-line label height,
+		item:              i,
+		icon:              icon,
+		text:              text,
+		over:              over,
+		objects:           []fyne.CanvasObject{icon, text, over},
+		fileTextSize:      widget.NewLabel("M\nM").MinSize().Height,
+		lastThemeTextSize: i.Theme().Size(theme.SizeNameText),
 	}
 }
 
 func stripExtension(name string) string {
-	// hidden-файлы (".gitignore") и имена без расширения оставляем как есть
 	if name == "" || name[0] == '.' {
 		return name
 	}
@@ -82,7 +84,6 @@ func (i *fileDialogItem) Tapped(*fyne.PointEvent) {
 	}
 	now := time.Now()
 	if !i.dir && now.Sub(i.lastClick) < fyne.CurrentApp().Driver().DoubleTapDelay() && i.open != nil {
-		// It is a double click, so we ask the dialog to open
 		i.open()
 	}
 	i.lastClick = now
@@ -111,6 +112,12 @@ func (f *fileDialog) newFileItem(location fyne.URI, dir, up bool) *fileDialogIte
 type fileItemRenderer struct {
 	item         *fileDialogItem
 	fileTextSize float32
+
+	// lastThemeTextSize — размер текста темы, при котором был измерен
+	// fileTextSize. Позволяет инвалидировать кэш только при смене темы,
+	// не пересоздавая Label на каждый Refresh (GridWrap рефрешит
+	// десятки-сотни итемов за раз).
+	lastThemeTextSize float32
 
 	icon    *widget.FileIcon
 	text    *widget.Label
@@ -159,7 +166,12 @@ func (s *fileItemRenderer) MinSize() fyne.Size {
 }
 
 func (s *fileItemRenderer) Refresh() {
-	s.fileTextSize = widget.NewLabel("M\nM").MinSize().Height // cache two-line label height
+	th := s.item.Theme()
+	textSize := th.Size(theme.SizeNameText)
+	if s.fileTextSize == 0 || s.lastThemeTextSize != textSize {
+		s.fileTextSize = widget.NewLabel("M\nM").MinSize().Height
+		s.lastThemeTextSize = textSize
+	}
 
 	s.text.SetText(s.item.name)
 	s.icon.SetURI(s.item.location)

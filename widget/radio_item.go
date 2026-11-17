@@ -1,3 +1,5 @@
+// xssyne/widget/radio_item.go
+
 package widget
 
 import (
@@ -118,6 +120,7 @@ func (i *radioItem) toggle() {
 	i.onTap(i)
 }
 
+// xssyne
 type radioItemRenderer struct {
 	widget.BaseRenderer
 	item *radioItem
@@ -125,6 +128,10 @@ type radioItemRenderer struct {
 	focusIndicator canvas.Circle
 	icon, over     canvas.Image
 	label          *canvas.Text
+
+	// кеш ресурсов: (raw, colorName) — пересоздаём только при изменении
+	lastInRaw, lastOutRaw     fyne.Resource
+	lastInColor, lastOutColor fyne.ThemeColorName
 }
 
 func (r *radioItemRenderer) Layout(size fyne.Size) {
@@ -162,6 +169,7 @@ func (r *radioItemRenderer) Refresh() {
 	canvas.Refresh(r.item.super())
 }
 
+// xssyne
 func (r *radioItemRenderer) update() {
 	th := r.item.Theme()
 	v := fyne.CurrentApp().Settings().ThemeVariant()
@@ -174,26 +182,39 @@ func (r *radioItemRenderer) update() {
 		r.label.Color = th.Color(theme.ColorNameForeground, v)
 	}
 
-	out := theme.NewThemedResource(th.Icon(theme.IconNameRadioButton))
-	out.ColorName = theme.ColorNameInputBorder
-	in := theme.NewThemedResource(th.Icon(theme.IconNameRadioButtonFill))
-	in.ColorName = theme.ColorNameInputBackground
+	outColor := theme.ColorNameInputBorder
+	inColor := theme.ColorNameInputBackground
 	if r.item.Selected {
-		in.ColorName = theme.ColorNamePrimary
-		out.ColorName = theme.ColorNameForeground
+		inColor = theme.ColorNamePrimary
+		outColor = theme.ColorNameForeground
 	}
 	if r.item.Disabled() {
 		if r.item.Selected {
-			in.ColorName = theme.ColorNameDisabled
+			inColor = theme.ColorNameDisabled
 		} else {
-			in.ColorName = theme.ColorNameBackground
+			inColor = theme.ColorNameBackground
 		}
-		out.ColorName = theme.ColorNameDisabled
+		outColor = theme.ColorNameDisabled
 	}
-	r.icon.Resource = in
-	r.icon.Refresh()
-	r.over.Resource = out
-	r.over.Refresh()
+
+	rawIn := th.Icon(theme.IconNameRadioButtonFill)
+	if r.lastInRaw != rawIn || r.lastInColor != inColor {
+		in := theme.NewThemedResource(rawIn)
+		in.ColorName = inColor
+		r.icon.Resource = in
+		r.lastInRaw = rawIn
+		r.lastInColor = inColor
+		r.icon.Refresh()
+	}
+	rawOut := th.Icon(theme.IconNameRadioButton)
+	if r.lastOutRaw != rawOut || r.lastOutColor != outColor {
+		out := theme.NewThemedResource(rawOut)
+		out.ColorName = outColor
+		r.over.Resource = out
+		r.lastOutRaw = rawOut
+		r.lastOutColor = outColor
+		r.over.Refresh()
+	}
 
 	if r.item.Disabled() {
 		r.focusIndicator.FillColor = color.Transparent

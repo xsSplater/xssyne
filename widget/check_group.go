@@ -1,3 +1,5 @@
+// xssyne/widget/check_group.go
+
 package widget
 
 import (
@@ -138,6 +140,7 @@ func (r *CheckGroup) itemTapped(item *Check) {
 	r.Refresh()
 }
 
+// xssyne
 func (r *CheckGroup) update() {
 	r.Options = removeDuplicates(r.Options)
 	if len(r.items) < len(r.Options) {
@@ -151,6 +154,8 @@ func (r *CheckGroup) update() {
 	} else if len(r.items) > len(r.Options) {
 		r.items = r.items[:len(r.Options)]
 	}
+
+	// Состояние синхронизируем здесь; Refresh для визуала делает рендерер.
 	for i, item := range r.items {
 		contains := false
 		for _, s := range r.Selected {
@@ -159,11 +164,9 @@ func (r *CheckGroup) update() {
 				break
 			}
 		}
-
 		item.Text = r.Options[i]
 		item.Checked = contains
 		item.disabled = r.Disabled()
-		item.Refresh()
 	}
 }
 
@@ -229,35 +232,34 @@ func (r *checkGroupRenderer) Refresh() {
 	canvas.Refresh(r.checks.super())
 }
 
+// xssyne
 func (r *checkGroupRenderer) updateItems() {
-	if len(r.items) < len(r.checks.Options) {
-		for i := len(r.items); i < len(r.checks.Options); i++ {
-			var item *Check
-			item = NewCheck(r.checks.Options[i], func(bool) {
-				r.checks.itemTapped(item)
-			})
-			r.SetObjects(append(r.Objects(), item))
-			r.items = append(r.items, item)
-		}
-		r.Layout(r.checks.Size())
-	} else if len(r.items) > len(r.checks.Options) {
-		total := len(r.checks.Options)
-		r.items = r.items[:total]
-		r.SetObjects(r.Objects()[:total])
-	}
-	for i, item := range r.items {
-		contains := false
-		for _, s := range r.checks.Selected {
-			if s == item.Text {
-				contains = true
+	// Единственный writer Check-виджетов — CheckGroup.update(). Здесь
+	// только пересобираем Objects из актуального списка items виджета,
+	// иначе после Append/Remove слайс рендерера расходится с виджетом
+	// и на экране оказываются не те Check'и, что хранит состояние.
+	items := r.checks.items
+
+	same := len(items) == len(r.items)
+	if same && len(items) > 0 {
+		for i := range items {
+			if items[i] != r.items[i] {
+				same = false
 				break
 			}
 		}
-		item.Text = r.checks.Options[i]
-		item.Checked = contains
-		item.disabled = r.checks.Disabled()
-		item.Refresh()
 	}
+	if same {
+		// Список не изменился — визуал обновит Refresh самих Check'ов.
+		return
+	}
+
+	objs := make([]fyne.CanvasObject, len(items))
+	for i, it := range items {
+		objs[i] = it
+	}
+	r.SetObjects(objs)
+	r.items = items
 }
 
 func removeDuplicates(options []string) []string {

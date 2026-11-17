@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/fyne-io/image/ico"
 
@@ -26,7 +27,9 @@ import (
 	"fyne.io/fyne/v2/storage/repository"
 )
 
-var curWindow *window
+// desktopDefaultDoubleTapDelay is a fallback for platforms that do not
+// expose a system value (Linux). Windows queries GetDoubleClickTime.
+const desktopDefaultDoubleTapDelay = 300 * time.Millisecond
 
 // Declare conformity with Driver
 var _ fyne.Driver = (*gLDriver)(nil)
@@ -42,6 +45,11 @@ type gLDriver struct {
 
 	trayStart, trayStop func()     // shut down the system tray, if used
 	systrayMenu         *fyne.Menu // cache the menu set so we know when to refresh
+
+	// focusedWindow — окно, которое последним получило foreground focus.
+	// Раньше это был package-level curWindow; вынесено в драйвер,
+	// чтобы не висел глобал без владельца.
+	focusedWindow *window
 }
 
 func (d *gLDriver) init() {
@@ -132,11 +140,11 @@ func (d *gLDriver) Device() fyne.Device {
 }
 
 func (d *gLDriver) Quit() {
-	if curWindow != nil {
+	if d.focusedWindow != nil {
 		if f := fyne.CurrentApp().Lifecycle().(*intapp.Lifecycle).OnExitedForeground(); f != nil {
 			f()
 		}
-		curWindow = nil
+		d.focusedWindow = nil
 		if d.trayStop != nil {
 			d.trayStop()
 		}

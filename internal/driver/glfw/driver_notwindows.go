@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build linux
 
 // xssyne/internal/driver/glfw/driver_notwindows.go
 

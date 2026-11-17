@@ -1,4 +1,4 @@
-//go:build !wasm && !test_web_driver
+//go:build (windows || linux) && !wasm && !test_web_driver
 
 package glfw
 
@@ -475,28 +475,12 @@ func (w *window) mouseClicked(_ *glfw.Window, btn glfw.MouseButton, action glfw.
 }
 
 func (w *window) mouseScrolled(viewport *glfw.Window, xoff float64, yoff float64) {
-	if runtime.GOOS != "darwin" && xoff == 0 &&
-		(viewport.GetKey(glfw.KeyLeftShift) == glfw.Press ||
-			viewport.GetKey(glfw.KeyRightShift) == glfw.Press) {
-		xoff, yoff = yoff, xoff
-	}
-
 	w.processMouseScrolled(xoff, yoff)
 }
 
 func convertMouseButton(btn glfw.MouseButton, mods glfw.ModifierKey) (desktop.MouseButton, fyne.KeyModifier) {
 	modifier := desktopModifier(mods)
 	rightClick := false
-	if runtime.GOOS == "darwin" {
-		if modifier&fyne.KeyModifierControl != 0 {
-			rightClick = true
-			modifier &^= fyne.KeyModifierControl
-		}
-		if modifier&fyne.KeyModifierSuper != 0 {
-			modifier |= fyne.KeyModifierControl
-			modifier &^= fyne.KeyModifierSuper
-		}
-	}
 
 	switch btn {
 	case glfw.MouseButton1:
@@ -837,17 +821,6 @@ func (w *window) create() {
 	w.viewport = win
 	if w.view() == nil { // something went wrong above, it will have been logged
 		return
-	}
-
-	// macOS 26 places new windows on a different screen than existing app windows;
-	// default new windows onto the same monitor as a visible sibling when no position was set.
-	if runtime.GOOS == "darwin" && !build.IsWayland && w.xpos == 0 && w.ypos == 0 {
-		if monitor := w.findSiblingMonitor(); monitor != nil {
-			monX, monY := monitor.GetPos()
-			monMode := monitor.GetVideoMode()
-			w.xpos = monX + (monMode.Width-pixWidth)/2
-			w.ypos = monY + (monMode.Height-pixHeight)/2
-		}
 	}
 
 	if (w.xpos != 0 || w.ypos != 0) && !build.IsWayland {

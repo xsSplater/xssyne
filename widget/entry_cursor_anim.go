@@ -1,3 +1,5 @@
+// xssyne/widget/entry_cursor_anim.go
+
 package widget
 
 import (
@@ -31,9 +33,11 @@ func newEntryCursorAnimation(cursor *canvas.Rectangle) *entryCursorAnimation {
 	return &entryCursorAnimation{cursor: cursor}
 }
 
+// xssyne
 // creates fyne animation
-func (a *entryCursorAnimation) createAnim() *fyne.Animation {
-	r, g, b, opaqueAlpha := col.ToNRGBA(theme.Color(theme.ColorNamePrimary))
+func (a *entryCursorAnimation) createAnim(th fyne.Theme) *fyne.Animation {
+	v := fyne.CurrentApp().Settings().ThemeVariant()
+	r, g, b, opaqueAlpha := col.ToNRGBA(th.Color(theme.ColorNamePrimary, v))
 	opaqueColor := color.NRGBA{R: r, G: g, B: b, A: opaqueAlpha}
 	endColor := color.NRGBA{R: r, G: g, B: b, A: cursorFadeAlpha}
 	startColor := opaqueColor
@@ -87,9 +91,9 @@ func (a *entryCursorAnimation) createAnim() *fyne.Animation {
 }
 
 // starts cursor animation.
-func (a *entryCursorAnimation) start() {
+func (a *entryCursorAnimation) start(th fyne.Theme) {
 	if a.anim == nil {
-		a.anim = a.createAnim()
+		a.anim = a.createAnim(th)
 		a.anim.Start()
 	}
 }

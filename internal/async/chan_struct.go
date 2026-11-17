@@ -1,3 +1,5 @@
+// xssyne/internal/async/chan_struct.go
+
 package async
 
 // UnboundedStructChan is a channel with an unbounded buffer for caching
@@ -31,7 +33,12 @@ func (ch *UnboundedStructChan) In() chan<- struct{} { return ch.in }
 func (ch *UnboundedStructChan) Out() <-chan struct{} { return ch.out }
 
 // Close closes the channel.
-func (ch *UnboundedStructChan) Close() { ch.close <- struct{}{} }
+func (ch *UnboundedStructChan) Close() {
+	select {
+	case ch.close <- struct{}{}:
+	case <-ch.close:
+	}
+}
 
 func (ch *UnboundedStructChan) processing() {
 	for {

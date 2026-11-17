@@ -1,3 +1,5 @@
+// xssyne/canvas/gradient.go
+
 package canvas
 
 import (
@@ -171,28 +173,6 @@ func (g *RadialGradient) Refresh() {
 	Refresh(g)
 }
 
-func calculatePixel(d float64, startColor, endColor color.Color) color.Color {
-	// fetch RGBA values
-	aR, aG, aB, aA := startColor.RGBA()
-	bR, bG, bB, bA := endColor.RGBA()
-
-	// Get difference
-	dR := float64(bR) - float64(aR)
-	dG := float64(bG) - float64(aG)
-	dB := float64(bB) - float64(aB)
-	dA := float64(bA) - float64(aA)
-
-	// Apply gradations
-	pixel := &color.RGBA64{
-		R: uint16(float64(aR) + d*dR),
-		B: uint16(float64(aB) + d*dB),
-		G: uint16(float64(aG) + d*dG),
-		A: uint16(float64(aA) + d*dA),
-	}
-
-	return pixel
-}
-
 func computeGradient(generator func(x, y float64) float64, w, h int, startColor, endColor color.Color) image.Image {
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 
@@ -204,10 +184,59 @@ func computeGradient(generator func(x, y float64) float64, w, h int, startColor,
 		endColor = color.Transparent
 	}
 
-	for x := 0; x < w; x++ {
-		for y := 0; y < h; y++ {
-			distance := generator(float64(x)+0.5, float64(y)+0.5)
-			img.Set(x, y, calculatePixel(distance, startColor, endColor))
+	// Premultiplied 16-bit начальный/конечный цвета (как возвращает Color.RGBA()).
+	// Интерполяция ведётся в premultiplied-пространстве — это сохраняет
+	// композитно-корректное поведение (красный→синий через 50% прозрачности
+	// даёт полупрозрачный красновато-синий, а не грязно-фиолетовый).
+	aR, aG, aB, aA := startColor.RGBA()
+	bR, bG, bB, bA := endColor.RGBA()
+
+	afR := float64(aR)
+	afG := float64(aG)
+	afB := float64(aB)
+	afA := float64(aA)
+	dR := float64(bR) - afR
+	dG := float64(bG) - afG
+	dB := float64(bB) - afB
+	dA := float64(bA) - afA
+
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			d := generator(float64(x)+0.5, float64(y)+0.5)
+			if d < 0 {
+				d = 0
+			} else if d > 1 {
+				d = 1
+			}
+
+			// Premultiplied результат (16-бит).
+			pr := afR + d*dR
+			pg := afG + d*dG
+			pb := afB + d*dB
+			pa := afA + d*dA
+
+			// Превращаем в NRGBA 8-bit — прямая запись в Pix, без
+			// промежуточного image.Set + interface boxing.
+			i := img.PixOffset(x, y)
+			if pa <= 0 {
+				img.Pix[i+0] = 0
+				img.Pix[i+1] = 0
+				img.Pix[i+2] = 0
+				img.Pix[i+3] = 0
+				continue
+			}
+			// Формула как в color.nrgbaModel: unpremultiply + >>8.
+			img.Pix[i+3] = uint8(uint32(pa+0.5) >> 8)
+			if pa >= 65535 {
+				img.Pix[i+0] = uint8(uint32(pr+0.5) >> 8)
+				img.Pix[i+1] = uint8(uint32(pg+0.5) >> 8)
+				img.Pix[i+2] = uint8(uint32(pb+0.5) >> 8)
+			} else {
+				pa16 := uint32(pa + 0.5)
+				img.Pix[i+0] = uint8((uint32(pr+0.5) * 0xffff / pa16) >> 8)
+				img.Pix[i+1] = uint8((uint32(pg+0.5) * 0xffff / pa16) >> 8)
+				img.Pix[i+2] = uint8((uint32(pb+0.5) * 0xffff / pa16) >> 8)
+			}
 		}
 	}
 	return img

@@ -1,3 +1,5 @@
+// xssyne/dialog/color_button.go
+
 package dialog
 
 import (
@@ -103,10 +105,13 @@ func (r *colorButtonRenderer) MinSize() fyne.Size {
 	return r.rectangle.MinSize().Max(fyne.NewSize(32, 32))
 }
 
+// xssyne
 func (r *colorButtonRenderer) Refresh() {
+	th := r.button.Theme()
+	v := fyne.CurrentApp().Settings().ThemeVariant()
 	if r.button.hovered {
-		r.rectangle.StrokeColor = theme.Color(theme.ColorNameHover)
-		r.rectangle.StrokeWidth = theme.Padding()
+		r.rectangle.StrokeColor = th.Color(theme.ColorNameHover, v)
+		r.rectangle.StrokeWidth = th.Size(theme.SizeNamePadding)
 	} else {
 		r.rectangle.StrokeWidth = 0
 	}

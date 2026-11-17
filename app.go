@@ -1,3 +1,5 @@
+// xssyne/app.go
+
 package fyne
 
 import (
@@ -124,7 +126,7 @@ func SetCurrentApp(current App) {
 func CurrentApp() App {
 	val := app.Load()
 	if val == nil {
-		LogError("Attempt to access current Fyne app when none is started", nil)
+		LogError("attempt to access current xssyne app when none is started", nil)
 		return nil
 	}
 	return *val

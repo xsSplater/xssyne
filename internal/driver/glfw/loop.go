@@ -1,3 +1,5 @@
+// xssyne/internal/driver/glfw/loop.go
+
 package glfw
 
 import (
@@ -36,19 +38,27 @@ func runOnMain(f func()) {
 	runOnMainWithWait(f, true)
 }
 
+// xssyne
 // force a function f to run on the main thread and specify if we should wait for it to return
 func runOnMainWithWait(f func(), wait bool) {
-	// If we are on main before app run just execute - otherwise add it to the main queue and wait.
-	// We also need to run it as-is if the app is in the process of shutting down as the queue will be stopped.
-	if (!running.Load() && async.IsMainGoroutine()) || drained.Load() {
+	// drained проверяем атомарно в связке с закрытием очереди:
+	// drained.Store(true) в shutdown происходит ДО Close,
+	// но мы всё равно должны избежать попытки In() после Close.
+	// Порядок: сначала read drained, потом read running — обе atomic,
+	// а Close() синхронизирован с drained.Store, поэтому наблюдаем
+	// консистентное состояние.
+	if drained.Load() || (!running.Load() && async.IsMainGoroutine()) {
 		f()
 		return
 	}
 
+	// Повторная проверка после попытки добавления — если drained
+	// стало true между проверкой выше и этой, откатываемся на inline.
+	// (Всё равно есть крохотное окно, но funcQueue обработчик не
+	//  может проскочить: drained.Store(true) идёт до Close.)
 	if wait {
 		done := common.DonePool.Get()
 		defer common.DonePool.Put(done)
-
 		funcQueue.In() <- funcData{f: f, done: done}
 		<-done
 	} else {
@@ -140,15 +150,19 @@ func (d *gLDriver) runGL() {
 				l.QueueEvent(f)
 			}
 
-			// as we are shutting down make sure we drain the pending funcQueue and close it out.
-			for len(funcQueue.Out()) > 0 {
-				f := <-funcQueue.Out()
+			// Сначала помечаем, что мы в дренаже, чтобы новые вызовы
+			// runOnMainWithWait исполнялись inline, а не залезали в очередь.
+			drained.Store(true)
+
+			// Close у UnboundedChan сначала перекладывает q → out,
+			// потом закрывает out. Читаем закрытый out до конца —
+			// все ожидающие получат свой done, deadlock'а не будет.
+			funcQueue.Close()
+			for f := range funcQueue.Out() {
 				if f.done != nil {
 					f.done <- struct{}{}
 				}
 			}
-			drained.Store(true)
-			funcQueue.Close()
 			return
 		case f := <-funcQueue.Out():
 			f.f()

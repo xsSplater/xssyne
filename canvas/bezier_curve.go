@@ -1,3 +1,5 @@
+// xssyne/canvas/bezier_curve.go
+
 package canvas
 
 import (
@@ -12,7 +14,7 @@ var _ fyne.CanvasObject = (*BezierCurve)(nil)
 // BezierCurve describes a colored bezier curve primitive in a Fyne canvas.
 // It supports linear (0 control point), quadratic (1 control point) and cubic (2 control points) bezier curves.
 // The curve is drawn within the object's position and size, with the start, end, and control points specified relative to the object.
-// Top-left position is (0,0) and bottom-right is (height,width).
+// Top-left position is (0,0) and bottom-right is (width,height).
 // Increasing the X coordinate moves to the right, increasing the Y coordinate moves downwards.
 // Negative coordinates are not supported.
 //

@@ -1,4 +1,4 @@
-//go:build !wasm && !test_web_driver
+//go:build (linux || windows) && !wasm && !test_web_driver
 
 // xssyne/internal/driver/glfw/menu_notweb.go
 
@@ -39,7 +39,11 @@ func addMissingQuitForMainMenu(menus *fyne.MainMenu, w *window) *fyne.MainMenu {
 			item.Action = func() {
 				for _, win := range w.driver.AllWindows() {
 					if glWin, ok := win.(*window); ok {
-						glWin.closed(glWin.view())
+						view := glWin.view()
+						if view == nil {
+							continue
+						}
+						glWin.closed(view)
 					} else {
 						win.Close()
 					}

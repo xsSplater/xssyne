@@ -1,4 +1,4 @@
-// xssyne/richtext.go
+// xssyne/widget/richtext.go
 
 package widget
 
@@ -51,8 +51,9 @@ type RichText struct {
 }
 
 type visualCacheEntry struct {
-	gen int64
-	obj []fyne.CanvasObject
+	gen   int64
+	obj   []fyne.CanvasObject
+	hasBg bool // снимок hasBackground() на момент создания visual
 }
 
 // NewRichText returns a new RichText widget that renders the given text and segments.
@@ -121,6 +122,7 @@ func (t *RichText) Refresh() {
 	t.BaseWidget.Refresh()
 }
 
+// xssyne
 // Resize sets a new size for the rich text.
 // This should only be called if it is not in a container with a layout manager.
 func (t *RichText) Resize(size fyne.Size) {
@@ -133,10 +135,13 @@ func (t *RichText) Resize(size fyne.Size) {
 	skipResize := !t.minCache.IsZero() && size.Width >= t.minCache.Width && size.Height >= t.minCache.Height && t.Wrapping == fyne.TextWrapOff && t.Truncation == fyne.TextTruncateOff
 
 	if skipResize {
-		if len(t.Segments) < 2 { // we can simplify :)
-			cache.Renderer(t).Layout(size)
-			return
-		}
+		// При TextWrapOff/TextTruncateOff row bounds не зависят от ширины,
+		// поэтому Layout() достаточен и дешевле Refresh() (не пересчитывает
+		// bounds). Единственный риск — если пользователь мутировал Segments
+		// без Refresh(); такое использование ломает и MinSize, и рендер,
+		// так что это не наш кейс.
+		cache.Renderer(t).Layout(size)
+		return
 	}
 
 	t.Refresh()
@@ -207,6 +212,7 @@ func (t *RichText) deleteFromTo(lowBound int, highBound int) []rune {
 	return ret
 }
 
+// xssyne
 // cachedSegmentVisual returns a cached segment visual representation.
 // The offset value is > 0 if the segment had been split and so we need multiple objects.
 func (t *RichText) cachedSegmentVisual(seg RichTextSegment, offset int) fyne.CanvasObject {
@@ -214,18 +220,31 @@ func (t *RichText) cachedSegmentVisual(seg RichTextSegment, offset int) fyne.Can
 		t.visualCache = make(map[RichTextSegment]visualCacheEntry)
 	}
 
+	// Кэшированный visual TextSegment имеет разную структуру в зависимости
+	// от наличия подложки (голый canvas.Text vs container[bg, text]).
+	// Если стиль поменялся (BackgroundColorName или codeInline), старая
+	// структура бесполезна — Update() молча ничего не отрисует.
+	if ts, ok := seg.(*TextSegment); ok {
+		if entry, exists := t.visualCache[seg]; exists && entry.hasBg != ts.hasBackground() {
+			delete(t.visualCache, seg)
+		}
+	}
+
 	if vis, ok := t.visualCache[seg]; ok && offset < len(vis.obj) {
 		return vis.obj[offset]
 	}
 
 	vis := seg.Visual()
-	if offset < len(t.visualCache[seg].obj) {
-		t.visualCache[seg].obj[offset] = vis
-	} else {
-		entry := t.visualCache[seg]
-		entry.obj = append(entry.obj, vis)
-		t.visualCache[seg] = entry
+	entry := t.visualCache[seg]
+	if ts, ok := seg.(*TextSegment); ok {
+		entry.hasBg = ts.hasBackground()
 	}
+	if offset < len(entry.obj) {
+		entry.obj[offset] = vis
+	} else {
+		entry.obj = append(entry.obj, vis)
+	}
+	t.visualCache[seg] = entry
 	return vis
 }
 

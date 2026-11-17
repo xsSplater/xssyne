@@ -108,6 +108,7 @@ func (p *preferences) load() {
 	}
 }
 
+// xssyne
 func (p *preferences) loadFromStorage(storage io.ReadCloser) (err error) {
 	defer func() {
 		if r := storage.Close(); r != nil && err == nil {
@@ -116,15 +117,24 @@ func (p *preferences) loadFromStorage(storage io.ReadCloser) (err error) {
 	}()
 	decode := json.NewDecoder(storage)
 
-	p.WriteValues(func(values map[string]any) {
-		err = decode.Decode(&values)
-		if err != nil {
-			return
+	// Декодируем в локальную map: при ошибке парсинга (битый JSON,
+	// обрыв потока, ручная правка) хранилище остаётся нетронутым.
+	// Раньше Decode писал прямо в store через WriteValues, и
+	// частично расшифрованные ключи оставались в памяти — приложение
+	// продолжало работать с "полу-загруженными" настройками.
+	var decoded map[string]any
+	if err = decode.Decode(&decoded); err != nil {
+		return err
+	}
+	convertLists(decoded)
+
+	p.WriteValues(func(store map[string]any) {
+		for k, v := range decoded {
+			store[k] = v
 		}
-		convertLists(values)
 	})
 
-	return err
+	return nil
 }
 
 func newPreferences(app *fyneApp) *preferences {
@@ -162,34 +172,42 @@ func newPreferences(app *fyneApp) *preferences {
 	return p
 }
 
+// xssyne
 func convertLists(values map[string]any) {
 	for k, v := range values {
-		if items, ok := v.([]any); ok {
-			if len(items) == 0 {
-				continue
-			}
+		items, ok := v.([]any)
+		if !ok || len(items) == 0 {
+			continue
+		}
 
-			switch items[0].(type) {
-			case bool:
-				bools := make([]bool, len(items))
-				for i, item := range items {
-					bools[i] = item.(bool)
-				}
-				values[k] = bools
-			case float64:
-				floats := make([]float64, len(items))
-				for i, item := range items {
-					floats[i] = item.(float64)
-				}
-				values[k] = floats
-			// case int: // json has no int!
-			case string:
-				strings := make([]string, len(items))
-				for i, item := range items {
-					strings[i] = item.(string)
-				}
-				values[k] = strings
+		switch items[0].(type) {
+		case bool:
+			if conv, ok := convertList[bool](items); ok {
+				values[k] = conv
+			}
+		case float64:
+			if conv, ok := convertList[float64](items); ok {
+				values[k] = conv
+			}
+		case string:
+			if conv, ok := convertList[string](items); ok {
+				values[k] = conv
 			}
 		}
 	}
+}
+
+// convertList безопасно конвертирует []any в []T. Если хоть один элемент
+// имеет другой тип (повреждённый prefs-файл, ручная правка), возвращает
+// (nil, false), и вызывающий оставляет исходное значение нетронутым.
+func convertList[T any](items []any) ([]T, bool) {
+	out := make([]T, len(items))
+	for i, item := range items {
+		v, ok := item.(T)
+		if !ok {
+			return nil, false
+		}
+		out[i] = v
+	}
+	return out, true
 }

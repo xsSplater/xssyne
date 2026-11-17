@@ -1,4 +1,4 @@
-//go:build !wasm
+//go:build (linux || windows) && !wasm
 
 package glfw
 

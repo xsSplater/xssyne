@@ -1,4 +1,4 @@
-//go:build !wayland || x11
+//go:build !(linux && wayland && !x11)
 
 package build
 

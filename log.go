@@ -1,3 +1,5 @@
+// xssyne/log.go
+
 package fyne
 
 import (
@@ -9,7 +11,7 @@ import (
 // if not nil.
 // The function also reports basic information about the code location.
 func LogError(reason string, err error) {
-	log.Println("Fyne error: ", reason)
+	log.Println("xssyne error: ", reason)
 	if err != nil {
 		log.Println("  Cause:", err)
 	}

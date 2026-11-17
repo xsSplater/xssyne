@@ -72,9 +72,12 @@ func setDisableScreenBlank(disable bool) {
 	syscall.SyscallN(executionState.Addr(), uintptr(uType))
 }
 
+// xssyne
 func (d *gLDriver) DoubleTapDelay() time.Duration {
-	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getdoubleclicktime
-	if getDoubleClickTime == nil {
+	// GetDoubleClickTime присутствует во всех NT-версиях начиная с 4.0,
+	// так что на практике ошибки нет. Но Find() — честный способ
+	// проверить, что символ резолвится, и он не паникует.
+	if err := getDoubleClickTime.Find(); err != nil {
 		return desktopDefaultDoubleTapDelay
 	}
 	r1, _, _ := syscall.SyscallN(getDoubleClickTime.Addr())

@@ -1,3 +1,5 @@
+// xssyne/canvas.go
+
 package fyne
 
 import "image"

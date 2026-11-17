@@ -48,6 +48,7 @@ func (i *menuItem) Child() *Menu {
 	return i.child
 }
 
+// xssyne
 // CreateRenderer returns a new renderer for the menu item.
 func (i *menuItem) CreateRenderer() fyne.WidgetRenderer {
 	th := i.parent.Theme()
@@ -60,13 +61,12 @@ func (i *menuItem) CreateRenderer() fyne.WidgetRenderer {
 	background.Hide()
 	text := canvas.NewText(i.Item.Label, th.Color(theme.ColorNameForeground, v))
 	text.Alignment = i.alignment
-	// Тень — тот же текст, что и основной, но смещённый на 1 px вниз и вправо
-	// и с пониженной альфой. Рисуется ПОД основным текстом (порядок
-	// в objects: background, shadow, text).
-	shadow := canvas.NewText(i.Item.Label, color.NRGBA{R: 0, G: 0, B: 0, A: 200})
+
+	shadow := canvas.NewText(i.Item.Label, menuShadowColor(th, v))
 	shadow.Alignment = i.alignment
 	shadow.TextStyle = text.TextStyle
-	if fyne.CurrentApp().Settings().ThemeVariant() == theme.VariantLight {
+	shadow.TextSize = text.TextSize
+	if v == theme.VariantLight {
 		shadow.Hide()
 	}
 	objects := []fyne.CanvasObject{background, shadow, text}
@@ -242,6 +242,7 @@ type menuItemRenderer struct {
 	shadow           *canvas.Text
 }
 
+// xssyne
 func (r *menuItemRenderer) Layout(size fyne.Size) {
 	th := r.i.parent.Theme()
 	innerPad := th.Size(theme.SizeNameInnerPadding)
@@ -319,16 +320,19 @@ func (r *menuItemRenderer) Layout(size fyne.Size) {
 	r.background.Move(fyne.NewPos(pad/2, pad/2))
 
 	if r.shadow != nil {
-		if fyne.CurrentApp().Settings().ThemeVariant() == theme.VariantLight {
+		// Тень — тот же текст, смещённый на 1 px вниз/вправо.
+		// Без Resize/Move canvas.Text остаётся в (0,0) с нулевым
+		// размером и не виден вообще.
+		r.shadow.Resize(r.text.Size())
+		r.shadow.Move(fyne.NewPos(r.text.Position().X+1, r.text.Position().Y+1))
+
+		v := fyne.CurrentApp().Settings().ThemeVariant()
+		if v == theme.VariantLight {
 			r.shadow.Hide()
 		} else {
+			r.shadow.Color = menuShadowColor(r.i.parent.Theme(), v)
 			r.shadow.TextSize = r.text.TextSize
 			r.shadow.TextStyle = r.text.TextStyle
-			r.shadow.Resize(r.text.Size())
-			pos := r.text.Position()
-			r.shadow.Move(fyne.NewPos(pos.X+1, pos.Y+1))
-
-			r.shadow.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 0x90}
 			r.shadow.Show()
 		}
 		r.shadow.Refresh()
@@ -360,10 +364,11 @@ func (r *menuItemRenderer) updateVisuals() {
 	r.text.Alignment = r.i.alignment
 	r.refreshText(r.text, false)
 	if r.shadow != nil {
-		if fyne.CurrentApp().Settings().ThemeVariant() == theme.VariantLight {
+		if v == theme.VariantLight {
 			r.shadow.Hide()
 		} else {
-			r.shadow.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 0x90}
+			r.shadow.Color = menuShadowColor(th, v)
+			r.shadow.TextSize = r.text.TextSize
 			r.shadow.TextStyle = r.text.TextStyle
 			r.shadow.Show()
 		}
@@ -531,4 +536,16 @@ func textsForShortcut(sc fyne.KeyboardShortcut, th fyne.Theme) (texts []*canvas.
 	t.TextStyle = style
 	texts = append(texts, t)
 	return texts
+}
+
+// xssyne
+// menuShadowColor возвращает цвет тени текста пункта меню.
+// Тема обычно отдаёт ColorNameShadow = NRGBA{0,0,0,0x33}; для наложения
+// на текст этого мало, поэтому поднимаем альфу до 0x50.
+func menuShadowColor(th fyne.Theme, v fyne.ThemeVariant) color.Color {
+	r, g, b, a := fynecolor.ToNRGBA(th.Color(theme.ColorNameShadow, v))
+	if a < 0x50 {
+		a = 0x50
+	}
+	return color.NRGBA{R: r, G: g, B: b, A: a}
 }

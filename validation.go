@@ -1,3 +1,5 @@
+// xssyne/validation.go
+
 package fyne
 
 // Validatable is an interface for specifying if a widget is validatable.

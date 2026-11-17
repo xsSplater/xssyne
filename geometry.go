@@ -1,3 +1,5 @@
+// xssyne/geometry.go
+
 package fyne
 
 var (

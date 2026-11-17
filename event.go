@@ -1,3 +1,5 @@
+// xssyne/event.go
+
 package fyne
 
 // HardwareKey contains information associated with physical key events

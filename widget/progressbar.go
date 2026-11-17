@@ -1,3 +1,5 @@
+// xssyne/widget/progressbar.go
+
 package widget
 
 import (
@@ -34,6 +36,7 @@ func (p *progressRenderer) MinSize() fyne.Size {
 	return size.AddWidthHeight(padding, padding)
 }
 
+// xssyne
 func (p *progressRenderer) calculateRatio() {
 	if p.progress.Value < p.progress.Min {
 		p.progress.Value = p.progress.Min
@@ -43,9 +46,15 @@ func (p *progressRenderer) calculateRatio() {
 	}
 
 	delta := p.progress.Max - p.progress.Min
+	if delta <= 0 {
+		// Вырожденный случай: Min == Max (или Max < Min — ошибка вызывающего).
+		// Раньше это давало 0/0 = NaN и ломало рендер (Resize с NaN).
+		// Показываем пустой прогресс — безопасно и визуально ожидаемо.
+		p.ratio = 0
+		return
+	}
 	p.ratio = float32((p.progress.Value - p.progress.Min) / delta)
 }
-
 func (p *progressRenderer) updateBar() {
 	p.Layout(p.progress.Size()) // Make sure that bar length updates.
 

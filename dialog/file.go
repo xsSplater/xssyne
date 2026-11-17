@@ -696,6 +696,7 @@ func (f *FileDialog) effectiveStartingDir() fyne.ListableURI {
 		return list
 	}
 
+	// xssyne
 	// Try home dir
 	dir, err := os.UserHomeDir()
 	if err == nil {
@@ -704,8 +705,12 @@ func (f *FileDialog) effectiveStartingDir() fyne.ListableURI {
 			return lister
 		}
 		fyne.LogError("Could not create lister for user home dir", err)
+	} else {
+		// Раньше эта ветка логировала «Could not load user home dir»
+		// даже когда os.UserHomeDir() успешно вернул путь и ListerForURI
+		// тоже сработал (err остался nil после внутренней проверки).
+		fyne.LogError("Could not load user home dir", err)
 	}
-	fyne.LogError("Could not load user home dir", err)
 
 	// Try to get ./
 	wd, err := os.Getwd()

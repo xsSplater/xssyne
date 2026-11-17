@@ -1,4 +1,4 @@
-//go:build windows || darwin || linux || openbsd || freebsd
+//go:build windows || linux
 
 package gl
 

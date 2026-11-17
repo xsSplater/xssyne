@@ -1,3 +1,5 @@
+// xssyne/key.go
+
 package fyne
 
 // KeyName represents the name of a key that has been pressed.
@@ -198,3 +200,7 @@ const (
 	// Since: 2.2
 	KeyModifierSuper
 )
+
+// KeyModifierShortcutDefault is the default key modifier for shortcuts (Control or Command).
+// xssyne targets only Linux and Windows, where Control is universal.
+const KeyModifierShortcutDefault = KeyModifierControl

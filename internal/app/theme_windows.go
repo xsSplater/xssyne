@@ -1,4 +1,4 @@
-//go:build !android && !ios && !wasm && !test_web_driver
+//go:build windows
 
 // xssyne/internal/app/theme_windows.go
 

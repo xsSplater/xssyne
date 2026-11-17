@@ -1,4 +1,4 @@
-//go:build !ci && !android && !ios && !wasm && !test_web_driver && !noos && !tinygo
+//go:build windows
 
 // xssyne/internal/app/config_windows.go
 
@@ -14,7 +14,9 @@ func rootConfigDir() string {
 		return filepath.Join(dir, "fyne")
 	}
 
-	// fallback only if UserConfigDir errored (extremely rare on Windows)
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, "AppData", "Roaming", "fyne")
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, "AppData", "Roaming", "fyne")
+	}
+
+	return filepath.Join(os.TempDir(), "fyne")
 }

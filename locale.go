@@ -1,3 +1,5 @@
+// xssyne/locale.go
+
 package fyne
 
 import "strings"

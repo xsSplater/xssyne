@@ -1,3 +1,5 @@
+// xssyne/canvas/blur.go
+
 package canvas
 
 import "fyne.io/fyne/v2"
@@ -52,8 +54,20 @@ func (b *Blur) Resize(s fyne.Size) {
 	repaint(b)
 }
 
-// NewBlur returns a new Blur instance
+// xssyne
+// NewBlur returns a new Blur instance.
+//
+// Radius is clamped to the supported range (0.1 .. 50) because the shader
+// implementation requires a strictly positive radius and a bounded kernel
+// size. Раньше невалидный radius давал неопределённое поведение (пустой
+// blur или артефакты), без какого-либо сообщения.
 func NewBlur(radius float32) *Blur {
+	if radius < 0.1 {
+		radius = 0.1
+	}
+	if radius > 50 {
+		radius = 50
+	}
 	return &Blur{
 		Radius: radius,
 	}

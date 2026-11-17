@@ -1,3 +1,5 @@
+// xssyne/internal/cache/base.go
+
 package cache
 
 import (

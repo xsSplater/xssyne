@@ -1,3 +1,5 @@
+// xssyne/container.go
+
 package fyne
 
 var (
@@ -69,14 +71,13 @@ func (c *Container) AccessibilityRole() AccessibleRole {
 
 // Add appends the specified object to the items this container manages.
 //
-// Since: 1.4
+// xssyne
 func (c *Container) Add(add CanvasObject) {
 	if add == nil {
 		return
 	}
-
 	c.Objects = append(c.Objects, add)
-	c.layout()
+	c.Refresh() // layout + repaint + refresh детей
 }
 
 // AddObject adds another [CanvasObject] to the set this Container holds.
@@ -172,13 +173,14 @@ func (c *Container) Resize(size Size) {
 	c.layout()
 }
 
+// xssyne
 // Show sets this container, and all its children, to be visible.
 func (c *Container) Show() {
 	if !c.Hidden {
 		return
 	}
-
 	c.Hidden = false
+	repaint(c)
 }
 
 // Size returns the current size c.

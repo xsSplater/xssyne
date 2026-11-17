@@ -1,3 +1,5 @@
+// xssyne/internal/widget/overlay_container.go
+
 package widget
 
 import (
@@ -31,7 +33,6 @@ func NewOverlayContainer(c fyne.CanvasObject, canvas fyne.Canvas, onDismiss func
 }
 
 // CreateRenderer returns a new renderer for the overlay container.
-// CreateRenderer returns a new renderer for the overlay container.
 func (o *OverlayContainer) CreateRenderer() fyne.WidgetRenderer {
 	var objs []fyne.CanvasObject
 	if o.Background != nil {
@@ -53,40 +54,42 @@ func (o *OverlayContainer) Refresh() {
 
 // Hide hides the overlay container.
 func (o *OverlayContainer) Hide() {
-	if o.shown {
+	if o.canvas != nil && o.shown {
 		o.canvas.Overlays().Remove(o)
-		o.shown = false
 	}
+	o.shown = false
 	o.Base.Hide()
 }
 
-// MouseIn catches mouse-in events not handled by the container’s content. It does nothing.
+// MouseIn catches mouse-in events not handled by the container's content. It does nothing.
 func (o *OverlayContainer) MouseIn(*desktop.MouseEvent) {
 }
 
-// MouseMoved catches mouse-moved events not handled by the container’s content. It does nothing.
+// MouseMoved catches mouse-moved events not handled by the container's content. It does nothing.
 func (o *OverlayContainer) MouseMoved(*desktop.MouseEvent) {
 }
 
-// MouseOut catches mouse-out events not handled by the container’s content. It does nothing.
+// MouseOut catches mouse-out events not handled by the container's content. It does nothing.
 func (o *OverlayContainer) MouseOut() {
 }
 
 // SetCanvas allows an overlay container to be re-used on a different canvas.
-//
-// Since: 2.8
 func (o *OverlayContainer) SetCanvas(c fyne.Canvas) {
-	if o.canvas != nil {
+	wasShown := o.shown
+	if wasShown && o.canvas != nil {
 		o.canvas.Overlays().Remove(o)
 	}
 	o.canvas = c
-	if o.canvas != nil {
+	if wasShown && o.canvas != nil {
 		o.canvas.Overlays().Add(o)
 	}
 }
 
 // Show makes the overlay container visible.
 func (o *OverlayContainer) Show() {
+	if o.canvas == nil {
+		return
+	}
 	if !o.shown {
 		o.canvas.Overlays().Add(o)
 		o.shown = true
@@ -94,16 +97,16 @@ func (o *OverlayContainer) Show() {
 	o.Base.Show()
 }
 
-// Tapped catches tap events not handled by the container’s content.
-// It performs the overlay container’s dismiss action.
+// Tapped catches tap events not handled by the container's content.
+// It performs the overlay container's dismiss action.
 func (o *OverlayContainer) Tapped(*fyne.PointEvent) {
 	if o.onDismiss != nil {
 		o.onDismiss()
 	}
 }
 
-// TappedSecondary catches secondary tap events not handled by the container’s content.
-// It performs the overlay container’s dismiss action.
+// TappedSecondary catches secondary tap events not handled by the container's content.
+// It performs the overlay container's dismiss action.
 func (o *OverlayContainer) TappedSecondary(*fyne.PointEvent) {
 	if o.onDismiss != nil {
 		o.onDismiss()

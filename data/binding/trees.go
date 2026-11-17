@@ -1,3 +1,5 @@
+// xssyne/data/binding/trees.go
+
 package binding
 
 import (
@@ -267,11 +269,17 @@ func BindURITree(ids *map[string][]string, v *map[string]fyne.URI) ExternalTree[
 	return bindTree(ids, v, storage.EqualURI)
 }
 
+// xssyne
 type treeBase struct {
 	base
 
 	ids   map[string][]string
 	items map[string]DataItem
+
+	// parentIndex — обратный индекс id → parent. Раньше parentIDFor
+	// пробегал всю мапу ids на каждый вызов, что давало O(N²) при
+	// массовом Set(...). Теперь O(1) на узел.
+	parentIndex map[string]string
 }
 
 // GetItem returns the DataItem at the specified id.
@@ -300,6 +308,7 @@ func (t *treeBase) ChildIDs(id string) []string {
 
 func (t *treeBase) appendItem(i DataItem, id, parent string) {
 	t.items[id] = i
+	t.parentIndex[id] = parent
 
 	ids := t.ids[parent]
 	for _, in := range ids {
@@ -310,8 +319,14 @@ func (t *treeBase) appendItem(i DataItem, id, parent string) {
 	t.ids[parent] = append(ids, id)
 }
 
-func (t *treeBase) deleteItem(id, parent string) {
+func (t *treeBase) deleteItem(id string) {
 	delete(t.items, id)
+
+	parent, ok := t.parentIndex[id]
+	if !ok {
+		return
+	}
+	delete(t.parentIndex, id)
 
 	ids, ok := t.ids[parent]
 	if !ok {
@@ -331,6 +346,17 @@ func (t *treeBase) deleteItem(id, parent string) {
 	t.ids[parent] = append(ids[:off], ids[off+1:]...)
 }
 
+// rebuildParentIndex пересобирает обратный индекс после Set(),
+// который полностью заменяет ids.
+func (t *treeBase) rebuildParentIndex() {
+	t.parentIndex = make(map[string]string)
+	for parent, children := range t.ids {
+		for _, child := range children {
+			t.parentIndex[child] = parent
+		}
+	}
+}
+
 func parentIDFor(id string, ids map[string][]string) string {
 	for parent, list := range ids {
 		for _, child := range list {
@@ -347,6 +373,7 @@ func newTree[T any](comparator func(T, T) bool) *boundTree[T] {
 	t := &boundTree[T]{val: &map[string]T{}, comparator: comparator}
 	t.ids = make(map[string][]string)
 	t.items = make(map[string]DataItem)
+	t.parentIndex = make(map[string]string)
 	return t
 }
 
@@ -362,6 +389,7 @@ func bindTree[T any](ids *map[string][]string, v *map[string]T, comparator func(
 	t := &boundTree[T]{val: v, updateExternal: true, comparator: comparator}
 	t.ids = make(map[string][]string)
 	t.items = make(map[string]DataItem)
+	t.parentIndex = make(map[string]string)
 
 	for parent, children := range *ids {
 		for _, leaf := range children {
@@ -479,6 +507,7 @@ func (t *boundTree[T]) Set(ids map[string][]string, v map[string]T) error {
 	t.lock.Lock()
 	t.ids = ids
 	*t.val = v
+	t.rebuildParentIndex()
 
 	trigger, err := t.doReload()
 	t.lock.Unlock()
@@ -522,7 +551,7 @@ func (t *boundTree[T]) doReload() (fire bool, retErr error) {
 
 		if remove { // remove item no longer present
 			fire = true
-			t.deleteItem(id, parentIDFor(id, t.ids))
+			t.deleteItem(id)
 		}
 	}
 

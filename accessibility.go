@@ -1,3 +1,5 @@
+// xssyne/accessibility.go
+
 package fyne
 
 // AccessibleRole describes the different roles an accessible element can take.

@@ -1,3 +1,5 @@
+// xssyne/math.go
+
 package fyne
 
 // Min returns the smaller of the passed values.

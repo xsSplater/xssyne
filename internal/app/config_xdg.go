@@ -10,6 +10,15 @@ import (
 )
 
 func rootConfigDir() string {
-	desktopConfig, _ := os.UserConfigDir()
-	return filepath.Join(desktopConfig, "fyne")
+	if dir, err := os.UserConfigDir(); err == nil && dir != "" {
+		return filepath.Join(dir, "fyne")
+	}
+
+	// $XDG_CONFIG_HOME не определён, $HOME отсутствует или нечитаем —
+	// filepath.Join с пустой строкой даёт относительный путь. Fallback
+	// на temp, чтобы приложение не писало prefs в CWD.
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "fyne")
+	}
+	return filepath.Join(os.TempDir(), "fyne")
 }

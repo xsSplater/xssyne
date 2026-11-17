@@ -1,3 +1,5 @@
+// xssyne/canvasobject.go
+
 package fyne
 
 // CanvasObject describes any graphical object that can be added to a canvas.

@@ -1,10 +1,8 @@
-//go:build linux || freebsd || openbsd || netbsd
+//go:build linux
 
 // xssyne/internal/driver/glfw/driver_xdg.go
 
 package glfw
-
-import "C"
 
 import (
 	"time"

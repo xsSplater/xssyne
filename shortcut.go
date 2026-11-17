@@ -21,8 +21,12 @@ func (sh *ShortcutHandler) TypedShortcut(shortcut Shortcut) {
 	f(shortcut)
 }
 
+// xssyne
 // AddShortcut register a handler to be executed when the shortcut action is triggered
 func (sh *ShortcutHandler) AddShortcut(shortcut Shortcut, handler func(shortcut Shortcut)) {
+	if sh == nil || shortcut == nil || handler == nil {
+		return
+	}
 	sh.entry.Store(shortcut.ShortcutName(), handler)
 }
 

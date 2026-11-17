@@ -1,3 +1,5 @@
+// xssyne/internal/widget/shadow.go
+
 package widget
 
 import (

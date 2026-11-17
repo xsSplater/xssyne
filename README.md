@@ -1,6 +1,6 @@
 # xssyne
 
-**xssyne** is a lightweight fork of the [Fyne](https://fyne.io) GUI toolkit, tailored specifically for the **Darktide-Servo-ModQuisitor-2** project – a mod manager for *Warhammer 40,000: Darktide*.
+**xssyne** is a lightweight fork of the [Fyne](https://fyne.io) GUI toolkit, tailored specifically for the **Darktide-Servo-ModQuisitor-2** project - a mod manager for *Warhammer 40,000: Darktide*.
 
 The fork removes all mobile, web, and macOS-specific components, leaving only the code needed to run on **Windows** and **Linux**. This reduces repository size, simplifies maintenance, and speeds up compilation.
 
@@ -14,7 +14,7 @@ The fork removes all mobile, web, and macOS-specific components, leaving only th
 
 ## Why this fork
 
-This fork is used in [Darktide-Servo-ModQuisitor-2](https://github.com/xsSplater/Darktide-Servo-Modquisitor-2) – a convenient mod manager for Darktide that allows:
+This fork is used in [Darktide-Servo-ModQuisitor-2](https://github.com/xsSplater/Darktide-Servo-Modquisitor-2) - a convenient mod manager for Darktide that allows:
 - Drag-and-drop mod installation
 - One-click automatic problem detection and fixes (outdated mods, conflicts, dependencies)
 - Manual or automatic mod list sorting

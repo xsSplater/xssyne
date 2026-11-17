@@ -1,3 +1,5 @@
+// xssyne/widget/date_entry.go
+
 package widget
 
 import (
@@ -134,15 +136,18 @@ func (e *DateEntry) popUpPos() fyne.Position {
 	return entryPos.Add(fyne.NewPos(0, e.Size().Height-e.Theme().Size(theme.SizeNameInputBorder)))
 }
 
+// xssyne
 func (e *DateEntry) setDate(d time.Time) {
 	e.Date = &d
 	if e.popUp != nil {
 		e.popUp.Hide()
+		e.popUp = nil
 	}
 
 	e.SetText(d.Format(getLocaleDateFormat()))
 }
 
+// xssyne
 func (e *DateEntry) setupDropDown() *Button {
 	if e.dropDown == nil {
 		e.dropDown = NewCalendar(time.Now(), e.setDate)
@@ -150,11 +155,13 @@ func (e *DateEntry) setupDropDown() *Button {
 	dropDownButton := NewButton("", func() {
 		c := fyne.CurrentApp().Driver().CanvasForObject(e.super())
 		if c == nil {
-			// DateEntry detached from its canvas; cannot host calendar
-			// dropdown (see fyne-io/fyne#5965).
 			return
 		}
 
+		if e.popUp != nil {
+			e.popUp.Hide()
+			e.popUp = nil
+		}
 		e.popUp = NewPopUp(e.dropDown, c)
 		e.popUp.ShowAtPosition(e.popUpPos())
 		e.popUp.Resize(fyne.NewSize(e.Size().Width, e.popUp.MinSize().Height))

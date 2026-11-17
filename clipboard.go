@@ -1,3 +1,5 @@
+// xssyne/clipboard.go
+
 package fyne
 
 // Clipboard represents the system clipboard interface

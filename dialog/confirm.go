@@ -24,9 +24,15 @@ func (d *ConfirmDialog) Confirm() {
 	d.hideWithResponse(true)
 }
 
+// xssyne
 // SetConfirmText allows custom text to be set in the confirmation button
 func (d *ConfirmDialog) SetConfirmText(label string) {
 	d.confirm.SetText(label)
+	if d.win == nil {
+		// Диалог ещё не показан — d.win создаётся в Show().
+		// Текст уже применён к d.confirm и будет отрисован при Show.
+		return
+	}
 	d.win.Refresh()
 }
 

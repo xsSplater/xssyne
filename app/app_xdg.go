@@ -1,4 +1,4 @@
-//go:build !ci && !wasm && !test_web_driver && !android && !ios && !mobile && (linux || openbsd || freebsd || netbsd) && !tinygo && !noos && !tamago
+//go:build linux
 
 // xssyne/app/app_xdg.go
 
@@ -128,10 +128,13 @@ func (a *fyneApp) SetSystemTrayIcon(icon fyne.Resource) {
 	}
 }
 
+// xssyne
 // SetSystemTrayWindow assigns a window to be shown with the system tray menu is tapped.
 // You should have previously called `SetSystemTrayMenu` to initialise the menu icon.
 func (a *fyneApp) SetSystemTrayWindow(w fyne.Window) {
-	a.Driver().(systrayDriver).SetSystemTrayWindow(w)
+	if desk, ok := a.Driver().(systrayDriver); ok {
+		desk.SetSystemTrayWindow(w)
+	}
 }
 
 func watchTheme(s *settings) {

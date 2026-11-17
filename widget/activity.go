@@ -1,3 +1,5 @@
+// xssyne/widget/activity.go
+
 package widget
 
 import (
@@ -114,10 +116,17 @@ func (a *activityRenderer) Objects() []fyne.CanvasObject {
 	return a.dots
 }
 
+// xssyne
 func (a *activityRenderer) Refresh() {
+	showAnim := fyne.CurrentApp().Settings().ShowAnimations()
+
 	if a.parent.started {
 		if !a.wasStarted {
 			a.start()
+		} else if !showAnim {
+			// Анимации отключили на лету — переключаемся на статичную картинку.
+			a.anim.Stop()
+			a.drawStaticEllipsis()
 		}
 	} else if a.wasStarted {
 		a.stop()

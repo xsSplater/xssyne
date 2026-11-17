@@ -1,4 +1,6 @@
-//go:build ci || !darwin || ios || iossimulator
+//go:build linux || windows
+
+// xssyne/internal/widget/scroller_behavior_other.go
 
 package widget
 

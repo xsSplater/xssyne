@@ -13,14 +13,25 @@ func (a *fyneApp) SetCloudProvider(p fyne.CloudProvider) {
 	a.transitionCloud(p)
 }
 
+// xssyne
 func (a *fyneApp) transitionCloud(p fyne.CloudProvider) {
-	if a.cloud != nil {
-		a.cloud.Cleanup(a)
+	old := a.cloud
+	if old != nil {
+		old.Cleanup(a)
 	}
 
 	err := p.Setup(a)
 	if err != nil {
 		fyne.LogError("Failed to set up cloud provider "+p.ProviderName(), err)
+		// Пытаемся вернуть старого провайдера, чтобы приложение не осталось
+		// без облака из-за временной ошибки.
+		if old != nil {
+			if err2 := old.Setup(a); err2 != nil {
+				fyne.LogError("Failed to restore previous cloud provider", err2)
+			} else {
+				a.cloud = old
+			}
+		}
 		return
 	}
 	a.cloud = p

@@ -1,3 +1,5 @@
+// xssyne/internal/preferences.go
+
 package internal
 
 import (
@@ -62,7 +64,11 @@ func (p *InMemoryPreferences) BoolWithFallback(key string, fallback bool) bool {
 
 // ChangeListeners returns the list of listeners registered for this set of preferences.
 func (p *InMemoryPreferences) ChangeListeners() []func() {
-	return p.changeListeners
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+	out := make([]func(), len(p.changeListeners))
+	copy(out, p.changeListeners)
+	return out
 }
 
 // Float looks up a float64 value for the key
@@ -272,8 +278,8 @@ func (p *InMemoryPreferences) get(key string) (any, bool) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	v, err := p.values[key]
-	return v, err
+	v, ok := p.values[key]
+	return v, ok
 }
 
 func (p *InMemoryPreferences) remove(key string) {
@@ -289,18 +295,21 @@ func (p *InMemoryPreferences) set(key string, value any) {
 
 	if reflect.TypeOf(value).Kind() == reflect.Slice {
 		s := reflect.ValueOf(value)
-		old := reflect.ValueOf(p.values[key])
-		if p.values[key] != nil && s.Len() == old.Len() {
-			changed := false
-			for i := 0; i < s.Len(); i++ {
-				if s.Index(i).Interface() != old.Index(i).Interface() {
-					changed = true
-					break
+		stored := p.values[key]
+		if stored != nil {
+			old := reflect.ValueOf(stored)
+			if old.Kind() == reflect.Slice && s.Len() == old.Len() {
+				changed := false
+				for i := 0; i < s.Len(); i++ {
+					if s.Index(i).Interface() != old.Index(i).Interface() {
+						changed = true
+						break
+					}
 				}
-			}
-			if !changed {
-				p.lock.Unlock()
-				return
+				if !changed {
+					p.lock.Unlock()
+					return
+				}
 			}
 		}
 	} else {

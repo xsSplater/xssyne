@@ -68,7 +68,11 @@ func (c *glCanvas) InteractiveArea() (fyne.Position, fyne.Size) {
 	return fyne.Position{}, c.Size()
 }
 
+// xssyne
 func (c *glCanvas) MinSize() fyne.Size {
+	if c.content == nil {
+		return c.canvasSize(fyne.NewSize(0, 0))
+	}
 	return c.canvasSize(c.content.MinSize())
 }
 
@@ -140,11 +144,15 @@ func (c *glCanvas) Scale() float32 {
 	return c.scale
 }
 
+// xssyne
 func (c *glCanvas) SetContent(content fyne.CanvasObject) {
-	newSize := internal.MaxSizes(c.size, c.canvasSize(content.MinSize()))
-
+	var newSize fyne.Size
+	if content != nil {
+		newSize = internal.MaxSizes(c.size, c.canvasSize(content.MinSize()))
+	} else {
+		newSize = c.size
+	}
 	c.setContent(content)
-
 	c.Resize(newSize)
 	c.SetDirty()
 }

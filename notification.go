@@ -1,6 +1,11 @@
+// xssyne/notification.go
+
 package fyne
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Notification represents a user notification that can be sent to the operating system.
 type Notification struct {
@@ -32,11 +37,16 @@ func (s *ScheduledNotification) ID() string {
 	return s.id
 }
 
+// xssyne
 // Cancel will remove this scheduled notification from future posting.
 // If your application might want to cancel a future notification after it has been restarted
 // you should persist the `ID` value and then use `CancelScheduledNotification`.
 func (s *ScheduledNotification) Cancel() error {
-	return CurrentApp().CancelScheduledNotification(s.id)
+	app := CurrentApp()
+	if app == nil {
+		return fmt.Errorf("cannot cancel notification: no current app")
+	}
+	return app.CancelScheduledNotification(s.id)
 }
 
 // NewScheduledNotification builds a scheduled notification record with a known ID.

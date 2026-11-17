@@ -1,3 +1,5 @@
+// xssyne/device.go
+
 package fyne
 
 // DeviceOrientation represents the different ways that a mobile device can be held

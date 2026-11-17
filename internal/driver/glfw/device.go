@@ -1,3 +1,5 @@
+// xssyne/internal/driver/glfw/device.go
+
 package glfw
 
 import (
@@ -25,5 +27,5 @@ func (*glDevice) HasKeyboard() bool {
 }
 
 func (*glDevice) IsBrowser() bool {
-	return runtime.GOARCH == "js" || runtime.GOOS == "js"
+	return runtime.GOOS == "js"
 }

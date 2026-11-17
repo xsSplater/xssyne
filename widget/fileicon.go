@@ -1,3 +1,5 @@
+// xssyne/widget/fileicon.go
+
 package widget
 
 import (
@@ -171,12 +173,23 @@ func (s *fileIconRenderer) Layout(size fyne.Size) {
 	s.Objects()[1].Resize(size)
 }
 
+// xssyne
 func (s *fileIconRenderer) Refresh() {
 	th := s.file.Theme()
 	v := fyne.CurrentApp().Settings().ThemeVariant()
 
 	s.file.setURI(s.file.URI)
 
+	// 1) Сначала синхронизируем базовый ресурс (снимаем инверсию для сравнения).
+	baseRes := s.img.Resource
+	if res, ok := baseRes.(*theme.InvertedThemedResource); ok {
+		baseRes = res.Original()
+	}
+	if baseRes != s.file.resource {
+		s.img.Resource = s.file.resource
+	}
+
+	// 2) Затем применяем состояние выделения.
 	if s.file.Selected {
 		s.background.Show()
 		s.ext.Color = th.Color(theme.ColorNameSelection, v)
@@ -191,10 +204,8 @@ func (s *fileIconRenderer) Refresh() {
 		}
 	}
 
-	if s.img.Resource != s.file.resource {
-		s.img.Resource = s.file.resource
-		s.img.Refresh()
-	}
+	s.img.Refresh()
+
 	if s.ext.Text != s.file.extension {
 		s.ext.Text = s.file.extension
 		s.ext.Refresh()

@@ -27,13 +27,14 @@ var (
 
 // Declare conformity with interfaces
 var (
-	_ desktop.Cursorable  = (*Table)(nil)
-	_ fyne.Draggable      = (*Table)(nil)
-	_ fyne.Focusable      = (*Table)(nil)
-	_ desktop.Hoverable   = (*Table)(nil)
-	_ fyne.Tappable       = (*Table)(nil)
-	_ fyne.DoubleTappable = (*Table)(nil)
-	_ fyne.Widget         = (*Table)(nil)
+	_ desktop.Cursorable     = (*Table)(nil)
+	_ fyne.Draggable         = (*Table)(nil)
+	_ fyne.Focusable         = (*Table)(nil)
+	_ desktop.Hoverable      = (*Table)(nil)
+	_ fyne.Tappable          = (*Table)(nil)
+	_ fyne.DoubleTappable    = (*Table)(nil)
+	_ fyne.Widget            = (*Table)(nil)
+	_ fyne.SecondaryTappable = (*Table)(nil)
 )
 
 // TableCellID is a type that represents a cell's position in a table based on its row and column location.
@@ -56,6 +57,11 @@ type Table struct {
 	OnSelected     func(id TableCellID)                             `json:"-"`
 	OnUnselected   func(id TableCellID)                             `json:"-"`
 	OnDoubleTapped func(id TableCellID)                             `json:"-"`
+	// OnSecondaryTapped вызывается при клике правой кнопкой мыши по
+	// ячейке. id — координаты ячейки, ev — полное событие (нужно для
+	// ev.AbsolutePosition: позиционирование контекстного меню ровно
+	// там, где кликнул пользователь).
+	OnSecondaryTapped func(id TableCellID, ev *fyne.PointEvent) `json:"-"`
 
 	// ShowHeaderRow specifies that a row should be added to the table with header content.
 	// This will default to an A-Z style content, unless overridden with `CreateHeader` and `UpdateHeader` calls.
@@ -257,6 +263,14 @@ func (t *Table) MouseIn(ev *desktop.MouseEvent) {
 
 // MouseDown response to desktop mouse event
 func (t *Table) MouseDown(e *desktop.MouseEvent) {
+	// ПКМ обрабатывается в TappedSecondary. Если пропустить клик через
+	// tapped(), то клик по пустому месту сбросит выделение (нежелательно),
+	// а клик по строке — переключит выделение ещё до того, как
+	// вызывающий код решит, что делать (например, добавить строку
+	// к мультивыделению). Поэтому MouseDown игнорирует правую кнопку.
+	if e.Button == desktop.MouseButtonSecondary {
+		return
+	}
 	t.tapped(e.Position, e.Modifier)
 }
 
@@ -506,22 +520,32 @@ func (t *Table) Unselect(id TableCellID) {
 
 // UnselectAll will mark all cells as unselected.
 //
-// Since: 2.1
+// Since: xssyne
 func (t *Table) UnselectAll() {
-	if t.selectedCell == nil {
+	if t.selectedCell == nil && len(t.selectedRows) == 0 {
 		return
 	}
 
-	selected := *t.selectedCell
+	var selected *TableCellID
+	if t.selectedCell != nil {
+		cpy := *t.selectedCell
+		selected = &cpy
+	}
+
 	t.selectedCell = nil
+	t.selectedRows = make(map[int]bool)
+	t.lastSelectedRow = -1
+	t.selectionAnchorRow = -1
 
 	if t.moveCallback != nil {
 		t.moveCallback()
 	}
 
-	if f := t.OnUnselected; f != nil {
-		f(selected)
+	if selected != nil && t.OnUnselected != nil {
+		t.OnUnselected(*selected)
 	}
+
+	t.Refresh()
 }
 
 // Highlight scrolls to the item represented by id and highlights it
@@ -1909,16 +1933,26 @@ func (t *Table) updateMetrics() {
 // refresh a row from a background goroutine, wrap the call in fyne.Do:
 //
 //	fyne.Do(func() { table.RefreshRow(id) })
+//
+// xssyne
 func (t *Table) RefreshRow(row int) {
 	if row < 0 || row >= t.rowCount || t.rowHeight <= 0 {
 		return
 	}
 
-	padding := t.Theme().Size(theme.SizeNamePadding)
-	firstRow := int(t.offset.Y / (t.rowHeight + padding))
-	lastRow := firstRow + t.visibleRows
+	// При SetRowHeight расчёт по единому rowHeight даёт неверный
+	// видимый диапазон — используем findY() для точных координат.
+	var rowY, rowH float32
+	if len(t.rowHeights) == 0 {
+		padding := t.Theme().Size(theme.SizeNamePadding)
+		rowY = float32(row) * (t.rowHeight + padding)
+		rowH = t.rowHeight
+	} else {
+		rowY, rowH = t.findY(row)
+	}
 
-	if row < firstRow || row > lastRow {
+	offsetY := t.offset.Y
+	if rowY+rowH < offsetY || rowY > offsetY+t.Size().Height {
 		return
 	}
 
@@ -1931,7 +1965,30 @@ func (t *Table) RefreshRow(row int) {
 // before the renderer performs its own refresh pass. This matters when the
 // renderer does not exist yet or when the data length has just changed.
 func (t *Table) Refresh() {
+	oldRows := t.rowCount
+	oldCols := t.colCount
 	t.updateMetrics()
+
+	// ИСПРАВЛЕНИЕ БАГА:
+	// Если количество строк или колонок изменилось (например, из-за фильтрации),
+	// мы принудительно сбрасываем прокрутку в начало.
+	// Без этого Scroll сохраняет старый offset, и таблица отрисовывается
+	// пустой или криво, пока пользователь не покрутит колесо.
+	if (t.rowCount != oldRows || t.colCount != oldCols) && t.content != nil {
+		// Сбрасываем выделение, если строки исчезли
+		if t.rowCount == 0 {
+			t.selectedCell = nil
+			t.selectedRows = make(map[int]bool)
+			t.lastSelectedRow = -1
+			t.selectionAnchorRow = -1
+		}
+
+		// Сбрасываем скролл в начало координат
+		t.offset = fyne.NewPos(0, 0)
+		t.content.Offset = fyne.NewPos(0, 0)
+		t.content.Refresh()
+	}
+
 	t.BaseWidget.Refresh()
 }
 
@@ -1954,6 +2011,48 @@ func (t *Table) ClearSelection() {
 	t.Refresh()
 }
 
+// SelectedRow returns the row index of the currently selected cell,
+// or -1 if no cell is selected.
+//
+// When multiple rows are selected (Ctrl/Shift+click), returns the row
+// of the "primary" selected cell — the one that was clicked last.
+func (t *Table) SelectedRow() int {
+	if t.selectedCell == nil {
+		return -1
+	}
+	return t.selectedCell.Row
+}
+
+// SelectedCell returns a copy of the currently selected cell ID,
+// or nil if no cell is selected.
+func (t *Table) SelectedCell() *TableCellID {
+	if t.selectedCell == nil {
+		return nil
+	}
+	cpy := *t.selectedCell
+	return &cpy
+}
+
+// SelectedRows returns a slice of all currently selected row indices
+// in ascending order, or nil if nothing is selected.
+func (t *Table) SelectedRows() []int {
+	if len(t.selectedRows) == 0 {
+		return nil
+	}
+	rows := make([]int, 0, len(t.selectedRows))
+	for row := range t.selectedRows {
+		rows = append(rows, row)
+	}
+	// Вставная сортировка вместо sort.Ints, чтобы не добавлять импорт:
+	// selection обычно маленькое (1-5 элементов).
+	for i := 1; i < len(rows); i++ {
+		for j := i; j > 0 && rows[j] < rows[j-1]; j-- {
+			rows[j], rows[j-1] = rows[j-1], rows[j]
+		}
+	}
+	return rows
+}
+
 // DoubleTapped is called when a user double-clicks on a table cell.
 func (t *Table) DoubleTapped(e *fyne.PointEvent) {
 	col := t.columnAt(e.Position)
@@ -1968,6 +2067,44 @@ func (t *Table) DoubleTapped(e *fyne.PointEvent) {
 	t.Select(id, 0)
 	if f := t.OnDoubleTapped; f != nil {
 		f(id)
+	}
+}
+
+// TappedSecondary is called when the user right-clicks on the table.
+//
+// Логика:
+//   - ПКМ по пустому месту / зазору между ячейками — no-op.
+//     Выделение НЕ сбрасывается (в отличие от левого клика).
+//   - ПКМ по валидной ячейке — вызывает OnSecondaryTapped.
+//     Выделение тоже не трогаем: пусть вызывающий код сам решает,
+//     переключать ли выделение (обычно — да, если строка ещё не
+//     выделена, и нет, если выделение множественное).
+func (t *Table) TappedSecondary(ev *fyne.PointEvent) {
+	if ev.Position.X < 0 || ev.Position.X >= t.Size().Width ||
+		ev.Position.Y < 0 || ev.Position.Y >= t.Size().Height {
+		return
+	}
+
+	col := t.columnAt(ev.Position)
+	if col == noCellMatch || col < 0 {
+		return
+	}
+	row := t.rowAt(ev.Position)
+	if row == noCellMatch || row < 0 {
+		return
+	}
+
+	// Сверяемся с актуальной длиной: columnAt/rowAt могут вернуть
+	// индексы за пределами данных (например, в последнем зазоре).
+	if f := t.Length; f != nil {
+		rows, cols := f()
+		if row >= rows || col >= cols {
+			return
+		}
+	}
+
+	if f := t.OnSecondaryTapped; f != nil {
+		f(TableCellID{Row: row, Col: col}, ev)
 	}
 }
 

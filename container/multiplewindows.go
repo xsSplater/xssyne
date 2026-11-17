@@ -1,3 +1,5 @@
+// xssyne/container/multiplewindows.go
+
 package container
 
 import (
@@ -41,9 +43,12 @@ func (m *MultipleWindows) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(intWidget.NewScroll(m.content))
 }
 
+// xssyne
 func (m *MultipleWindows) Refresh() {
 	m.refreshChildren()
-	//	m.BaseWidget.Refresh()
+	// Без BaseWidget.Refresh() внешние изменения Windows могут не
+	// отобразиться, пока что-то ещё не дёрнет repaint виджета.
+	m.BaseWidget.Refresh()
 }
 
 // RaiseToTop asks this multiple window container to raise a specific inner window above others.

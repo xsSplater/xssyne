@@ -1,3 +1,5 @@
+// xssyne/widget/check.go
+
 package widget
 
 import (
@@ -153,11 +155,20 @@ func (c *Check) Tapped(pe *fyne.PointEvent) {
 	c.SetChecked(!c.Checked)
 }
 
+// xssyne
 // MinSize returns the size that this widget should not shrink below
 func (c *Check) MinSize() fyne.Size {
 	c.ExtendBaseWidget(c)
 	c.minSize = c.BaseWidget.MinSize()
 	return c.minSize
+}
+
+// Refresh сбрасывает кэш minSize: он используется для hit-теста в
+// Tapped/MouseMoved, и после смены текста/темы устаревшее значение
+// даёт промахи или ложные срабатывания.
+func (c *Check) Refresh() {
+	c.minSize = fyne.Size{}
+	c.BaseWidget.Refresh()
 }
 
 // CreateRenderer is a private method to Fyne which links this widget to its renderer
